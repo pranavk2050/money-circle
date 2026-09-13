@@ -1,0 +1,17 @@
+{
+  "name": "money-flow-india",
+  "version": "1.0.0",
+  "description": "Animated circular Sankey visualization of India's macro-economic money flows",
+  "scripts": {
+    "build": "esbuild src/app.js --bundle --outfile=bundle.js --format=iife --target=es2018 --minify",
+    "watch": "esbuild src/app.js --bundle --outfile=bundle.js --format=iife --target=es2018 --watch"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "d3": "^7.9.0",
+    "d3-sankey-circular": "^0.34.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

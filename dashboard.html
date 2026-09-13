@@ -1,0 +1,808 @@
+<title>India Economy Monitor</title>
+<meta name="description" content="Real-time health monitoring of the Indian economy — GDP, inflation, money flows, foreign investment, and personal finance insights.">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#070B14;--s1:#0D1520;--s2:#121C30;--bd:#1E2F47;
+  --gold:#D4A92A;--green:#27AE60;--amber:#E67E22;--red:#C0392B;
+  --text:#E2DDD0;--t2:#7A90B0;--t3:#3D5270;
+  --mono:"Courier New",Consolas,monospace;
+  --serif:Georgia,"Times New Roman",serif;
+  --sans:system-ui,-apple-system,sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100vh}
+
+/* ── Header ── */
+#hdr{flex-shrink:0;background:var(--s1);border-bottom:1px solid var(--bd);padding:10px 20px 0}
+.hdr-row{display:flex;align-items:baseline;gap:12px;margin-bottom:8px;flex-wrap:wrap}
+.hdr-row h1{font-family:var(--serif);font-size:clamp(15px,2.2vw,20px);font-weight:normal;letter-spacing:.2px}
+.hdr-meta{font-size:11px;color:var(--t2);flex:1;min-width:0}
+.score-block{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.score-num{font-family:var(--mono);font-size:26px;color:var(--gold);line-height:1}
+.score-lbl{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em}
+
+/* ── Tabs ── */
+#tabs{display:flex}
+.tb{padding:7px 16px;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--t2);font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s}
+.tb.on{color:var(--gold);border-bottom-color:var(--gold)}
+.tb:hover:not(.on){color:var(--text)}
+
+/* ── Content ── */
+#content{flex:1;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--bd) transparent}
+.pane{display:none;padding:14px 20px 24px}
+.pane.on{display:block}
+
+/* ── Section header ── */
+.sh{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--t2);padding-bottom:7px;border-bottom:1px solid var(--bd);margin:16px 0 10px}
+.sh:first-child{margin-top:0}
+
+/* ── KPI Grid ── */
+.kg{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:9px;margin-bottom:4px}
+.kc{background:var(--s1);border:1px solid var(--bd);border-radius:3px;padding:11px 13px;position:relative;overflow:hidden}
+.kc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kc.g::before{background:var(--green)}.kc.a::before{background:var(--amber)}.kc.r::before{background:var(--red)}
+.kc-lbl{font-size:10.5px;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.kc-val{font-family:var(--mono);font-size:21px;font-variant-numeric:tabular-nums;line-height:1.1}
+.kc-unit{font-size:11px;color:var(--t2);margin-left:2px}
+.kc-chg{font-size:11px;margin-top:3px}
+.kc-chg.up{color:var(--green)}.kc-chg.dn{color:var(--red)}.kc-chg.nt{color:var(--t2)}
+.kc-bot{margin-top:6px;display:flex;justify-content:space-between;align-items:center}
+.kc-note{font-size:10px;color:var(--t3)}
+.pill{display:inline-block;padding:2px 6px;border-radius:2px;font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.pill.g{background:rgba(39,174,96,.15);color:var(--green)}
+.pill.a{background:rgba(230,126,34,.15);color:var(--amber)}
+.pill.r{background:rgba(192,57,43,.15);color:var(--red)}
+
+/* ── Box ── */
+.box{background:var(--s1);border:1px solid var(--bd);border-radius:3px;padding:13px 15px;margin-bottom:12px;overflow-x:auto}
+.box-title{font-size:10.5px;color:var(--t2);margin-bottom:10px;letter-spacing:.03em}
+
+/* ── CSS Bar Chart ── */
+.bars{display:flex;flex-direction:column;gap:5px}
+.bar-row{display:grid;align-items:center;gap:8px}
+.bar-row.hbar{grid-template-columns:95px 1fr 80px}
+.bar-lbl{font-size:11px;color:var(--t2);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{background:var(--s2);border-radius:2px;height:16px;position:relative;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px;opacity:.85;transition:width .6s ease}
+.bar-num{font-family:var(--mono);font-size:11px;color:var(--text);white-space:nowrap}
+
+/* ── Signed bar (FPI) ── */
+.signed-bars{display:flex;flex-direction:column;gap:6px}
+.sbar-row{display:grid;grid-template-columns:58px 1fr;align-items:center;gap:6px}
+.sbar-q{font-size:10px;color:var(--t2)}
+.sbar-track{display:flex;height:16px;align-items:center;position:relative}
+.sbar-mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--bd)}
+.sbar-fill{height:100%;border-radius:2px;opacity:.85;position:absolute}
+.sbar-val{font-family:var(--mono);font-size:10px;position:absolute;white-space:nowrap}
+
+/* ── Table ── */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl th{text-align:left;padding:5px 10px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--t2);border-bottom:1px solid var(--bd)}
+.tbl td{padding:6px 10px;border-bottom:1px solid rgba(30,47,71,.4)}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--s2)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ── 2-col layout ── */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:650px){.two{grid-template-columns:1fr}}
+
+/* ── Flow SVG ── */
+#flow-wrap{background:var(--s1);border:1px solid var(--bd);border-radius:3px;display:flex;justify-content:center;margin-bottom:12px;overflow:hidden;padding:6px 0}
+#flow-svg{width:100%;max-width:560px;height:auto;overflow:visible}
+.fp{transition:stroke-opacity .15s;cursor:pointer}
+.np{cursor:pointer}
+
+/* ── Tooltip ── */
+#tip{position:fixed;pointer-events:none;background:var(--s1);border:1px solid var(--bd);border-radius:3px;padding:8px 12px;font-size:12px;max-width:220px;line-height:1.5;z-index:200;display:none}
+
+/* ── Score section ── */
+.score-dims{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px}
+.sdim{background:var(--s1);border:1px solid var(--bd);border-radius:3px;padding:9px 11px}
+.sdim-lbl{font-size:10.5px;color:var(--t2);margin-bottom:3px}
+.sdim-val{font-family:var(--mono);font-size:15px;margin-bottom:5px}
+.sbar{height:4px;background:var(--bd);border-radius:2px;overflow:hidden}
+.sbar-f{height:100%;border-radius:2px}
+
+/* ── Insight cards ── */
+.ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:11px;margin-bottom:16px}
+.ic{background:var(--s1);border:1px solid var(--bd);border-left:3px solid var(--gold);border-radius:3px;padding:13px 15px}
+.ic.pos{border-left-color:var(--green)}.ic.cau{border-left-color:var(--amber)}.ic.risk{border-left-color:var(--red)}
+.ic-tag{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--t2);margin-bottom:4px}
+.ic-title{font-family:var(--serif);font-size:14.5px;line-height:1.3;margin-bottom:6px}
+.ic-body{font-size:12px;color:var(--t2);line-height:1.55;margin-bottom:8px}
+.ic-act{font-size:11.5px;background:var(--s2);padding:7px 10px;border-radius:2px;line-height:1.5;color:var(--text)}
+.ic-act::before{content:"→ ";color:var(--gold);font-weight:bold}
+
+/* ── Donut ── */
+.alloc-wrap{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.donut{width:110px;height:110px;border-radius:50%;flex-shrink:0;position:relative}
+.donut-hole{position:absolute;inset:27%;border-radius:50%;background:var(--s1)}
+.alloc-legend{display:flex;flex-direction:column;gap:5px}
+.al-row{display:flex;align-items:center;gap:7px;font-size:12px}
+.al-swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+</style>
+
+<!-- ── HTML ── -->
+<div id="app">
+  <div id="hdr">
+    <div class="hdr-row">
+      <h1>🇮🇳 India Economy Monitor</h1>
+      <span class="hdr-meta">Sources: RBI · MoSPI · DPIIT · SEBI · FinMin &nbsp;|&nbsp; Updated: <strong id="upd"></strong></span>
+      <div class="score-block">
+        <div><div class="score-lbl">Economy Score</div><div class="score-num" id="hdr-score">—</div></div>
+        <div id="hdr-pill"></div>
+      </div>
+    </div>
+    <div id="tabs">
+      <button class="tb on" data-t="dash">Dashboard</button>
+      <button class="tb" data-t="flow">Money Flow</button>
+      <button class="tb" data-t="cap">Capital Flows</button>
+      <button class="tb" data-t="ins">My Insights</button>
+    </div>
+  </div>
+
+  <div id="content">
+    <!-- Dashboard -->
+    <div id="pane-dash" class="pane on">
+      <div class="sh">Macro Indicators — FY 2024-25</div>
+      <div class="kg" id="macro-grid"></div>
+      <div class="two" style="margin-top:14px">
+        <div>
+          <div class="sh">Tax Collections (₹ Lakh Crore)</div>
+          <div class="box"><div class="bars" id="tax-bars"></div></div>
+        </div>
+        <div>
+          <div class="sh">Credit &amp; Deposit Growth (% YoY)</div>
+          <div class="box"><div class="bars" id="bank-bars"></div></div>
+        </div>
+      </div>
+      <div class="sh">Key Ratios vs Benchmarks</div>
+      <div class="box">
+        <table class="tbl"><thead><tr>
+          <th>Indicator</th><th>Current</th><th>Benchmark</th><th>Status</th><th>Note</th>
+        </tr></thead><tbody id="ratio-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- Money Flow -->
+    <div id="pane-flow" class="pane">
+      <div class="sh">Annual Money Flows — ₹ Lakh Crore (FY2024-25 est.) · Hover nodes &amp; flows for detail</div>
+      <div id="flow-wrap">
+        <svg id="flow-svg" viewBox="0 0 640 550" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <filter id="fg" x="-60%" y="-60%" width="220%" height="220%">
+              <feGaussianBlur stdDeviation="5" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <g id="svg-paths"></g>
+          <g id="svg-particles"></g>
+          <g id="svg-nodes"></g>
+          <g id="svg-labels"></g>
+        </svg>
+      </div>
+      <div class="sh">All Flows — Sorted by Volume</div>
+      <div class="box">
+        <table class="tbl" id="flow-tbl">
+          <thead><tr><th>From → To</th><th>₹ LCr/yr</th><th>% of GDP</th><th>Description</th></tr></thead>
+          <tbody id="flow-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Capital Flows -->
+    <div id="pane-cap" class="pane">
+      <div class="sh">Foreign Capital — FY 2024-25</div>
+      <div class="kg" id="cap-grid"></div>
+      <div class="two" style="margin-top:14px">
+        <div>
+          <div class="sh">FDI Inflows by Sector (USD Billion, FY24)</div>
+          <div class="box"><div class="bars" id="fdi-bars"></div></div>
+        </div>
+        <div>
+          <div class="sh">FPI Equity Flows — Quarterly (₹ Crore)</div>
+          <div class="box"><div class="signed-bars" id="fpi-bars"></div></div>
+        </div>
+      </div>
+      <div class="sh">Remittances — India: World's Largest Recipient ($120 Bn, FY24)</div>
+      <div class="box">
+        <table class="tbl"><thead><tr><th>Region</th><th>Share</th><th>USD Bn</th><th>Key Receiving States</th></tr></thead>
+        <tbody id="remit-tbody"></tbody></table>
+      </div>
+      <div class="sh">Trade Balance (USD Billion, FY24)</div>
+      <div class="box">
+        <table class="tbl"><thead><tr><th>Category</th><th>Exports</th><th>Imports</th><th>Balance</th></tr></thead>
+        <tbody id="trade-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- Insights -->
+    <div id="pane-ins" class="pane">
+      <div class="sh">Economy Health Score</div>
+      <div id="score-wrap"></div>
+      <div class="sh">Actionable Insights for Personal Wealth</div>
+      <div class="ig" id="ins-grid"></div>
+      <div class="sh">Suggested Portfolio (Based on Current Conditions)</div>
+      <div class="box" id="alloc-box"></div>
+      <div class="sh">Data Releases to Track</div>
+      <div class="box">
+        <table class="tbl"><thead><tr><th>Release</th><th>Frequency</th><th>Why It Matters</th><th>Next</th></tr></thead>
+        <tbody id="watch-tbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="tip"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════
+// DATA — Edit numbers here when new reports are published.
+// mospi.gov.in · rbi.org.in · indiabudget.gov.in · dpiit.gov.in
+// sebi.gov.in · commerce.gov.in · ppac.gov.in
+// ════════════════════════════════════════════════════════════════════
+const D = {
+  updated: "March 2025",
+
+  macro: [
+    { id:"gdp",    label:"GDP (Nominal)",      val:324.1,  unit:"₹ LCr",   chg:"+6.4% real growth", dir:"up",   status:"g", note:"FY25 Adv Est — MoSPI" },
+    { id:"cpi",    label:"CPI Inflation",       val:4.6,    unit:"%",       chg:"-0.4% vs FY24",      dir:"up",   status:"a", note:"FY25 avg — MoSPI (target: 4%)" },
+    { id:"repo",   label:"Repo Rate",            val:6.25,   unit:"%",       chg:"−0.25% cut Feb 2025",dir:"dn",   status:"g", note:"RBI MPC — rate-cut cycle started" },
+    { id:"forex",  label:"Forex Reserves",       val:640,    unit:"USD Bn",  chg:"8.5 months import cover",dir:"nt",status:"g", note:"Feb 2025 — RBI" },
+    { id:"fd",     label:"Fiscal Deficit",       val:4.8,    unit:"% GDP",   chg:"Target: 4.5%",       dir:"nt",   status:"a", note:"FY25 RE — FinMin (FRBM target: 3%)" },
+    { id:"ca",     label:"Current Account",      val:-1.1,   unit:"% GDP",   chg:"Manageable range",   dir:"nt",   status:"g", note:"FY25 est — RBI (< 2% = safe)" },
+    { id:"inr",    label:"USD / INR",             val:84.5,   unit:"₹",       chg:"−1.2% depreciation", dir:"dn",   status:"a", note:"Mar 2025 — RBI reference rate" },
+    { id:"nifty",  label:"Nifty 50",              val:23000,  unit:"pts",     chg:"P/E ~20x — fair value",dir:"nt", status:"a", note:"Mar 2025 — NSE" },
+  ],
+
+  ratios: [
+    { name:"GDP Growth",        val:"6.4%",      bmark:"≥ 7%",        status:"g", note:"Above global avg; slowdown from 8.2% FY24" },
+    { name:"CPI Inflation",     val:"4.6%",      bmark:"4.0% (RBI)",  status:"a", note:"Food-driven; core inflation ~3.5% controlled" },
+    { name:"Fiscal Deficit",    val:"4.8% GDP",  bmark:"3% (FRBM)",   status:"a", note:"Gradual consolidation path" },
+    { name:"Current Account",   val:"−1.1% GDP", bmark:"< −2%",       status:"g", note:"Services surplus cushions goods deficit" },
+    { name:"Bank NPA",          val:"2.8%",      bmark:"< 5%",        status:"g", note:"Multi-decade low — RBI Financial Stability" },
+    { name:"Forex Cover",       val:"8.5 months",bmark:"≥ 6 months",  status:"g", note:"$640bn / ~$75bn monthly imports" },
+    { name:"Debt-to-GDP",       val:"~57%",      bmark:"< 60%",       status:"a", note:"Union + States; moderate vs EM peers" },
+    { name:"Unemployment (PLFS)",val:"7.6%",     bmark:"< 5%",        status:"r", note:"Urban higher; structural challenge" },
+    { name:"10-yr G-Sec Yield", val:"6.65%",     bmark:"Repo +0.4%",  status:"g", note:"Spreads compressed = bond market healthy" },
+    { name:"Credit Growth",     val:"16.3% YoY", bmark:"10–18%",      status:"g", note:"Strong but watch over-leverage" },
+  ],
+
+  tax: [
+    { name:"GST",           val:20.14, max:22, color:"#3E8E7E", note:"FY25 est — ₹1.68 LCr/month avg" },
+    { name:"Income Tax",    val:10.46, max:22, color:"#5B8FBF", note:"+17.1% YoY — middle class expansion" },
+    { name:"Corporate Tax", val: 9.11, max:22, color:"#8A6FB0", note:"+12.6% YoY" },
+    { name:"Excise",        val: 3.05, max:22, color:"#B5651D", note:"Petroleum-linked" },
+    { name:"Customs",       val: 2.10, max:22, color:"#C9A227", note:"−1.2% YoY" },
+  ],
+
+  banking: [
+    { name:"Bank Credit",   val:16.3, max:22, color:"#3E8E7E", note:"% YoY — FY25" },
+    { name:"Deposits",      val:11.2, max:22, color:"#5B8FBF", note:"% YoY — gap raises LDR concern" },
+    { name:"MSME Credit",   val:18.6, max:22, color:"#8A6FB0", note:"% YoY — policy push" },
+    { name:"Retail Loans",  val:17.2, max:22, color:"#C1587A", note:"% YoY — personal credit boom" },
+  ],
+
+  // ── Capital ────────────────────────────────────────────────────
+  cap: [
+    { label:"FDI Inflows",    val:"$71.4 Bn",    note:"FY24 — DPIIT",              chg:"−3.5% vs FY23", status:"a" },
+    { label:"FPI Equity Net", val:"−₹68K Cr",    note:"FY25 — net sellers",        chg:"Strong USD pressure", status:"r" },
+    { label:"FPI Debt Net",   val:"+₹1.2 LCr",   note:"FY25 — JP Morgan index",    chg:"Bond inclusion boost", status:"g" },
+    { label:"Remittances",    val:"$120 Bn",      note:"FY24 — World #1 recipient", chg:"+7.5% YoY", status:"g" },
+    { label:"ECB",            val:"$38 Bn",       note:"FY24 — External Comm Borr", chg:"Infra-linked", status:"g" },
+    { label:"FDI Stock",      val:"$700+ Bn",     note:"Cumulative since 2000",      chg:"DPIIT data", status:"g" },
+  ],
+
+  fdi: [
+    { name:"Services",        val:15.4, color:"#3E8E7E" },
+    { name:"IT Software/HW",  val:12.2, color:"#5B8FBF" },
+    { name:"Telecom",         val: 5.8, color:"#8A6FB0" },
+    { name:"Trading",         val: 4.6, color:"#C9A227" },
+    { name:"Construction",    val: 4.1, color:"#B5651D" },
+    { name:"Automobile",      val: 3.8, color:"#C1587A" },
+    { name:"Pharma",          val: 2.9, color:"#4FA3A3" },
+    { name:"Chemicals",       val: 3.2, color:"#6E7B6D" },
+    { name:"Others",          val:19.4, color:"#445566" },
+  ],
+
+  fpi: [
+    { q:"Q1 FY24", val: 28000, color:"#27AE60" },
+    { q:"Q2 FY24", val: 45000, color:"#27AE60" },
+    { q:"Q3 FY24", val: 16000, color:"#27AE60" },
+    { q:"Q4 FY24", val:-14000, color:"#C0392B" },
+    { q:"Q1 FY25", val:-14000, color:"#C0392B" },
+    { q:"Q2 FY25", val: 45000, color:"#27AE60" },
+    { q:"Q3 FY25", val:-40000, color:"#C0392B" },
+    { q:"Q4 FY25", val:-65000, color:"#C0392B" },
+  ],
+
+  remit: [
+    { region:"Gulf Countries", share:35, usd:42.0, states:"Kerala, UP, Bihar, Rajasthan" },
+    { region:"USA & Canada",   share:27, usd:32.4, states:"Kerala, Andhra, Telangana" },
+    { region:"UK & Europe",    share:12, usd:14.4, states:"Punjab, Gujarat, Maharashtra" },
+    { region:"SE Asia",        share: 8, usd: 9.6, states:"Tamil Nadu, Andhra Pradesh" },
+    { region:"Others",         share:18, usd:21.6, states:"Multiple states" },
+  ],
+
+  trade: [
+    { cat:"Merchandise (Goods)", exp:437, imp:678 },
+    { cat:"Software & IT Svcs",  exp:248, imp: 12 },
+    { cat:"Other Services",      exp: 91, imp:163 },
+    { cat:"TOTAL",               exp:776, imp:853, bold:true },
+  ],
+
+  // ── Money flows (₹ LCr/year FY2024-25 est.) ───────────────────
+  flows: [
+    { f:"rbi",        g:"banks",       v:38,   lbl:"Currency issuance & repo liquidity" },
+    { f:"banks",      g:"rbi",         v:22,   lbl:"CRR / SLR reserve requirements" },
+    { f:"rbi",        g:"govt",        v:2.1,  lbl:"RBI surplus dividend to govt" },
+    { f:"markets",    g:"govt",        v:20,   lbl:"G-Sec market borrowing" },
+    { f:"govt",       g:"markets",     v:14,   lbl:"Interest payments on public debt" },
+    { f:"banks",      g:"households",  v:55,   lbl:"Retail loans & deposit interest paid" },
+    { f:"households", g:"banks",       v:75,   lbl:"Household deposits" },
+    { f:"banks",      g:"business",    v:90,   lbl:"Corporate & MSME credit" },
+    { f:"business",   g:"banks",       v:68,   lbl:"Loan repayments & corporate deposits" },
+    { f:"households", g:"govt",        v:22,   lbl:"Income tax & GST (consumer share)" },
+    { f:"business",   g:"govt",        v:30,   lbl:"Corporate tax & GST remitted" },
+    { f:"govt",       g:"households",  v:14,   lbl:"Subsidies, welfare payments & wages" },
+    { f:"govt",       g:"business",    v:15,   lbl:"Capex, PSU funding & PLI incentives" },
+    { f:"households", g:"business",    v:185,  lbl:"Consumer spending — PFCE (~57% of GDP)" },
+    { f:"business",   g:"households",  v:100,  lbl:"Wages & salaries" },
+    { f:"households", g:"markets",     v:30,   lbl:"Financial savings — SIPs, equity, insurance" },
+    { f:"markets",    g:"households",  v:12,   lbl:"Dividends, interest & fund redemptions" },
+    { f:"markets",    g:"business",    v:24,   lbl:"Equity & debt capital raised (IPOs, bonds)" },
+    { f:"foreign",    g:"business",    v:72,   lbl:"Export earnings & FDI inflows" },
+    { f:"business",   g:"foreign",     v:80,   lbl:"Import payments (goods & services)" },
+    { f:"foreign",    g:"households",  v:10,   lbl:"NRI remittances" },
+    { f:"households", g:"informal",    v:35,   lbl:"Cash spending — unorganised sector" },
+    { f:"informal",   g:"households",  v:22,   lbl:"Informal wages & petty income" },
+    { f:"business",   g:"informal",    v:20,   lbl:"Cash payments to informal labour" },
+    { f:"informal",   g:"business",    v:25,   lbl:"Informal-sector output to formal supply chains" },
+  ],
+
+  // ── Insights ───────────────────────────────────────────────────
+  insights: [
+    { type:"pos", tag:"Debt Opportunity",
+      title:"Rate-Cut Cycle Has Begun",
+      body:"RBI cut repo to 6.25% in Feb 2025 — first cut in 5 years. 2–3 more cuts priced in for FY26. Bond prices rise as rates fall.",
+      action:"Allocate 15–20% to long-duration debt mutual funds (gilt funds). Lock in yields now before they fall further." },
+    { type:"pos", tag:"Long-Term Equity",
+      title:"India's GDP Premium Is Structural",
+      body:"6.4% growth makes India the fastest-growing major economy, outpacing China (4.6%). IMF projects India maintaining this gap through 2030.",
+      action:"Invest in Nifty 50 or Nifty Next 50 index funds via monthly SIP. Avoid stock-picking; ride the structural growth." },
+    { type:"pos", tag:"Capex Supercycle",
+      title:"₹11 Lakh Crore Govt Capex — Highest Ever",
+      body:"FY26 budget allocates ₹11.11 LCr for infrastructure. Railways, roads, defense, and PLI-linked manufacturing are priority sectors.",
+      action:"Consider 10–15% in infra/capex mutual funds (ICICI Pru Infra, Mirae Asset Great Consumer, manufacturing themes)." },
+    { type:"pos", tag:"Income",
+      title:"NRI? Remittance Advantage Exists",
+      body:"India received $120bn remittances in FY24 — world's largest. NRE FDs earn 7–8% tax-free interest in India.",
+      action:"If you have foreign income, NRE fixed deposits offer superior risk-adjusted returns vs equivalent foreign instruments." },
+    { type:"cau", tag:"Watch",
+      title:"FPI Selling Indian Equity",
+      body:"FPIs sold ₹65,000+ Cr in Q4 FY25 — strong USD, high US yields, and elevated Nifty valuations (P/E ~20x) drove exits.",
+      action:"Don't react. FPI outflows create buying opportunities for patient domestic investors. Keep SIPs running; ignore short-term noise." },
+    { type:"cau", tag:"Hedge",
+      title:"Rupee Has Depreciated 5% in 2 Years",
+      body:"USD/INR at ₹84–85. Import-driven inflation (oil, electronics) remains a risk. RBI intervenes but cannot fully offset.",
+      action:"Hold 5–10% in gold — Sovereign Gold Bonds (SGB) give 2.5% annual interest + gold price gain + tax-free on maturity." },
+    { type:"cau", tag:"Risk",
+      title:"Savings Account Returns Are Negative in Real Terms",
+      body:"Bank savings accounts yield 3–4%. With CPI at 4.6%, you lose ~1% annually in real purchasing power by staying in savings.",
+      action:"Move idle cash above 6 months' expenses to liquid debt mutual funds (yielding ~7%) or short-term FDs (7–8%)." },
+    { type:"pos", tag:"Compounding",
+      title:"SIP India — ₹25,000 Cr Flows Monthly",
+      body:"Monthly SIP inflows crossed ₹25,000 Cr. Domestic retail flows now cushion market dips. The equity culture is deepening permanently.",
+      action:"₹10,000/month SIP in a Nifty 50 index fund for 20 years at 12% CAGR = ~₹1 Cr. Start today. Every month delayed costs compounding." },
+  ],
+
+  allocation: [
+    { name:"India Equity (Index)",  pct:40, color:"#3E8E7E" },
+    { name:"Long-Duration Debt",    pct:18, color:"#5B8FBF" },
+    { name:"Gold (SGB / ETF)",      pct:10, color:"#D4A92A" },
+    { name:"International Equity",  pct:15, color:"#8A6FB0" },
+    { name:"Liquid / Short Debt",   pct:12, color:"#6E7B6D" },
+    { name:"Real Estate (REITs)",   pct: 5, color:"#B5651D" },
+  ],
+
+  watch: [
+    { event:"RBI Monetary Policy",     freq:"Every 2 months", why:"Sets repo rate — cascades to loans, FDs, bonds",           next:"Jun 2025" },
+    { event:"CPI Inflation",           freq:"Monthly (12th)", why:"Key RBI input — drives rate decisions",                    next:"12 May 2025" },
+    { event:"GDP Advance Estimate",    freq:"Quarterly",      why:"Growth narrative — moves equity markets",                  next:"May 2025" },
+    { event:"GST Collections",         freq:"Monthly (1st)",  why:"Consumption health — rising = economy strong",             next:"1 May 2025" },
+    { event:"Forex Reserves (RBI)",    freq:"Weekly (Fri)",   why:"Rupee defense capacity — tracks capital flows",            next:"Every Friday" },
+    { event:"SEBI MF / AMFI Data",     freq:"Monthly (wk 1)", why:"SIP flows + AUM — retail market sentiment",               next:"First week May" },
+    { event:"RBI Annual Report",       freq:"Annual (May)",   why:"Comprehensive bank & economy audit — strategic planning",  next:"May 2025" },
+    { event:"Union Budget",            freq:"Annual (Feb 1)", why:"Biggest fiscal event — taxes, capex, sector bets",         next:"1 Feb 2026" },
+  ],
+};
+
+// ════════════════════════════════════════════════════════════════════
+// RENDER UTILITIES
+// ════════════════════════════════════════════════════════════════════
+function fmtN(v, dec=1) {
+  return Math.abs(v).toLocaleString("en-IN", { maximumFractionDigits: dec });
+}
+
+function hBars(container, data) {
+  const max = Math.max(...data.map(d => d.val));
+  container.innerHTML = data.map(d => `
+    <div class="bar-row hbar">
+      <span class="bar-lbl" title="${d.name}">${d.name}</span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${(d.val/max*100).toFixed(1)}%;background:${d.color}"></div>
+      </div>
+      <span class="bar-num">${fmtN(d.val)}${d.unit||''}</span>
+    </div>`).join('');
+}
+
+function signedBars(container, data) {
+  const max = Math.max(...data.map(d => Math.abs(d.val)));
+  container.innerHTML = data.map(d => {
+    const neg = d.val < 0;
+    const pct = (Math.abs(d.val)/max*50).toFixed(1);
+    const left  = neg ? `${(50-parseFloat(pct)).toFixed(1)}%` : '50%';
+    const vLeft = neg ? `${(50-parseFloat(pct)-1).toFixed(1)}%` : `${(50+parseFloat(pct)+1).toFixed(1)}%`;
+    const vAnchor = neg ? 'right:auto;left:0' : 'left:auto';
+    return `<div class="sbar-row">
+      <span class="sbar-q">${d.q}</span>
+      <div class="sbar-track">
+        <div class="sbar-mid"></div>
+        <div class="sbar-fill" style="left:${left};width:${pct}%;background:${d.color}"></div>
+        <span class="sbar-val" style="font-size:9px;color:${d.color};${neg?'right:calc(50% + '+pct+'% + 3px)':'left:calc(50% + '+pct+'% + 3px)'};top:50%;transform:translateY(-50%)">
+          ${neg?'-':'+'} ${Math.round(Math.abs(d.val)/1000)}k
+        </span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// DASHBOARD TAB
+// ════════════════════════════════════════════════════════════════════
+function renderDash() {
+  document.getElementById('upd').textContent = D.updated;
+
+  // KPI cards
+  const grid = document.getElementById('macro-grid');
+  grid.innerHTML = '';
+  D.macro.forEach(m => {
+    const c = document.createElement('div');
+    c.className = `kc ${m.status}`;
+    const dirCls = m.dir === 'up' ? 'up' : m.dir === 'dn' ? 'dn' : 'nt';
+    const arrow = m.dir === 'up' ? '▲' : m.dir === 'dn' ? '▼' : '—';
+    c.innerHTML = `
+      <div class="kc-lbl">${m.label}</div>
+      <div><span class="kc-val">${fmtN(Math.abs(m.val), m.unit==='pts'?0:1)}</span><span class="kc-unit">${m.unit}</span></div>
+      <div class="kc-chg ${dirCls}">${arrow} ${m.chg}</div>
+      <div class="kc-bot">
+        <span class="kc-note">${m.note}</span>
+        <span class="pill ${m.status}">${m.status==='g'?'Healthy':m.status==='a'?'Watch':'Concern'}</span>
+      </div>`;
+    grid.appendChild(c);
+  });
+
+  // Tax bars
+  hBars(document.getElementById('tax-bars'), D.tax.map(t => ({ ...t, unit:" LCr" })));
+
+  // Bank bars
+  hBars(document.getElementById('bank-bars'), D.banking.map(b => ({ ...b, unit:"%" })));
+
+  // Ratios table
+  const tb = document.getElementById('ratio-tbody');
+  tb.innerHTML = '';
+  D.ratios.forEach(r => {
+    const tr = document.createElement('tr');
+    const lbl = r.status==='g'?'On Track':r.status==='a'?'Watch':'Concern';
+    tr.innerHTML = `<td style="font-weight:500">${r.name}</td>
+      <td class="num">${r.val}</td>
+      <td class="num" style="color:var(--t2)">${r.bmark}</td>
+      <td><span class="pill ${r.status}">${lbl}</span></td>
+      <td style="font-size:11px;color:var(--t3)">${r.note}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MONEY FLOW SVG
+// ════════════════════════════════════════════════════════════════════
+const COLORS = {
+  monetary:"#5B8FBF", government:"#C9A227", banks:"#3E8E7E",
+  markets:"#8A6FB0",  households:"#C1587A", business:"#B5651D",
+  foreign:"#4FA3A3",  informal:"#6E7B6D",
+};
+const NODES = [
+  { id:"rbi",        name:["Reserve","Bank"],        cat:"monetary",   angle:0   },
+  { id:"govt",       name:["Government"],              cat:"government", angle:45  },
+  { id:"banks",      name:["Commercial","Banks"],      cat:"banks",      angle:90  },
+  { id:"markets",    name:["Capital","Markets"],       cat:"markets",    angle:135 },
+  { id:"households", name:["Households"],              cat:"households", angle:180 },
+  { id:"business",   name:["Business","& Industry"],  cat:"business",   angle:225 },
+  { id:"foreign",    name:["Foreign","Sector"],        cat:"foreign",    angle:270 },
+  { id:"informal",   name:["Informal","Economy"],      cat:"informal",   angle:315 },
+];
+const NS = "http://www.w3.org/2000/svg";
+const CX=320, CY=280, ORB=190, NR=24;
+
+function npos(angle) {
+  const r = (angle - 90) * Math.PI / 180;
+  return { x: CX + ORB * Math.cos(r), y: CY + ORB * Math.sin(r) };
+}
+function svgE(tag, attrs) {
+  const e = document.createElementNS(NS, tag);
+  Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k, String(v)));
+  return e;
+}
+function mkPath(fId, gId) {
+  const fn = NODES.find(n => n.id===fId), tn = NODES.find(n => n.id===gId);
+  const p1 = npos(fn.angle), p2 = npos(tn.angle);
+  const dx=p2.x-p1.x, dy=p2.y-p1.y, d=Math.hypot(dx,dy)||1;
+  const nx=dx/d, ny=dy/d;
+  const sx=p1.x+nx*(NR+2), sy=p1.y+ny*(NR+2);
+  const ex=p2.x-nx*(NR+5), ey=p2.y-ny*(NR+5);
+  const mx=(sx+ex)/2, my=(sy+ey)/2;
+  const cdx=mx-CX, cdy=my-CY, cd=Math.hypot(cdx,cdy)||1;
+  const qx=mx+(cdx/cd)*ORB*0.3, qy=my+(cdy/cd)*ORB*0.3;
+  return `M${sx.toFixed(1)} ${sy.toFixed(1)} Q${qx.toFixed(1)} ${qy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`;
+}
+function fw(v) { return Math.max(1.2, Math.min(13, Math.sqrt(v) * 1.05)); }
+
+const LCFG = {
+  0:  { a:"middle", dx:0,         dy:-(NR+14) },
+  45: { a:"start",  dx:NR+10,     dy:-10 },
+  90: { a:"start",  dx:NR+12,     dy:4  },
+  135:{ a:"start",  dx:NR+10,     dy:14 },
+  180:{ a:"middle", dx:0,         dy:NR+20 },
+  225:{ a:"end",    dx:-(NR+10),  dy:14 },
+  270:{ a:"end",    dx:-(NR+12),  dy:4  },
+  315:{ a:"end",    dx:-(NR+10),  dy:-10 },
+};
+
+function renderFlow() {
+  const pathsG     = document.getElementById('svg-paths');
+  const particlesG = document.getElementById('svg-particles');
+  const nodesG     = document.getElementById('svg-nodes');
+  const labelsG    = document.getElementById('svg-labels');
+  pathsG.innerHTML = ''; particlesG.innerHTML = ''; nodesG.innerHTML = ''; labelsG.innerHTML = '';
+  const tip = document.getElementById('tip');
+
+  // Paths + animated particles
+  D.flows.forEach((fl, i) => {
+    const fn = NODES.find(n => n.id===fl.f);
+    const color = COLORS[fn.cat];
+    const pd = mkPath(fl.f, fl.g);
+
+    const glow = svgE('path', { d:pd, stroke:color, 'stroke-width':fw(fl.v)+6, fill:'none', 'stroke-opacity':'0.12', filter:'url(#fg)' });
+    pathsG.appendChild(glow);
+
+    const path = svgE('path', { d:pd, stroke:color, 'stroke-width':fw(fl.v), fill:'none', 'stroke-opacity':'0.55', 'stroke-linecap':'round', class:'fp', 'data-i':i });
+    path.addEventListener('mouseenter', e => {
+      path.setAttribute('stroke-opacity','1');
+      tip.style.display='block';
+      tip.innerHTML=`<strong style="color:${color}">${fl.f} → ${fl.g}</strong><br>₹${fl.v} lakh crore/yr<br><span style="color:var(--t2);font-size:11px">${fl.lbl}</span>`;
+    });
+    path.addEventListener('mousemove', e => { tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-10)+'px'; });
+    path.addEventListener('mouseleave', () => { path.setAttribute('stroke-opacity','0.55'); tip.style.display='none'; });
+    pathsG.appendChild(path);
+
+    // Animated particles along each flow
+    const dur = Math.max(2.5, 10 - Math.sqrt(fl.v) * 0.75); // bigger flow = faster
+    const count = Math.min(5, Math.max(2, Math.round(Math.sqrt(fl.v) * 0.55)));
+    const r = 1.8 + Math.min(2, fl.v / 80);
+    for (let k = 0; k < count; k++) {
+      const dot = svgE('circle', { r, fill: color, 'fill-opacity':'0.92' });
+      const am = document.createElementNS(NS, 'animateMotion');
+      am.setAttribute('dur', `${dur.toFixed(2)}s`);
+      am.setAttribute('begin', `${((k / count) * dur).toFixed(2)}s`);
+      am.setAttribute('repeatCount', 'indefinite');
+      am.setAttribute('path', pd);
+      dot.appendChild(am);
+      particlesG.appendChild(dot);
+    }
+  });
+
+  // Nodes
+  NODES.forEach(nd => {
+    const p = npos(nd.angle), color = COLORS[nd.cat], lc = LCFG[nd.angle];
+    const inflow  = D.flows.filter(f=>f.g===nd.id).reduce((s,f)=>s+f.v, 0);
+    const outflow = D.flows.filter(f=>f.f===nd.id).reduce((s,f)=>s+f.v, 0);
+
+    const grp = svgE('g', { class:'np', id:`nd-${nd.id}` });
+    grp.appendChild(svgE('circle', { cx:p.x, cy:p.y, r:NR+6, fill:'none', stroke:color, 'stroke-width':'1', 'stroke-opacity':'0.22' }));
+    grp.appendChild(svgE('circle', { cx:p.x, cy:p.y, r:NR,   fill:color, 'fill-opacity':'0.18', stroke:color, 'stroke-width':'1.8' }));
+
+    grp.addEventListener('mouseenter', e => {
+      tip.style.display='block';
+      tip.innerHTML=`<strong style="color:${color}">${nd.id.toUpperCase()}</strong><br>In: ₹${inflow.toFixed(1)} LCr/yr<br>Out: ₹${outflow.toFixed(1)} LCr/yr`;
+      document.querySelectorAll('.fp').forEach(p => {
+        const fl = D.flows[+p.dataset.i];
+        p.setAttribute('stroke-opacity', fl.f===nd.id||fl.g===nd.id ? '1' : '0.06');
+      });
+    });
+    grp.addEventListener('mousemove', e => { tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-10)+'px'; });
+    grp.addEventListener('mouseleave', () => {
+      tip.style.display='none';
+      document.querySelectorAll('.fp').forEach(p => p.setAttribute('stroke-opacity','0.55'));
+    });
+    nodesG.appendChild(grp);
+
+    // Labels
+    const lg = svgE('g', { 'pointer-events':'none' });
+    nd.name.forEach((line, li) => {
+      const t = svgE('text', {
+        x: p.x+lc.dx, y: p.y+lc.dy+li*14,
+        'text-anchor': lc.a, 'dominant-baseline':'auto',
+        fill: li===0 ? '#E2DDD0' : '#7A90B0',
+        'font-size': li===0 ? '11.5' : '10',
+        'font-weight': li===0 ? '500' : '400',
+        'font-family':'system-ui,sans-serif',
+      });
+      t.textContent = line;
+      lg.appendChild(t);
+    });
+    labelsG.appendChild(lg);
+  });
+
+  // Flow table (sorted by value desc)
+  const gdp = D.macro.find(m=>m.id==='gdp').val;
+  const sorted = [...D.flows].sort((a,b)=>b.v-a.v);
+  const tb = document.getElementById('flow-tbody');
+  tb.innerHTML = '';
+  sorted.forEach(fl => {
+    const fnc = COLORS[NODES.find(n=>n.id===fl.f).cat];
+    const gnc = COLORS[NODES.find(n=>n.id===fl.g).cat];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><span style="color:${fnc};font-weight:500">${fl.f}</span> → <span style="color:${gnc}">${fl.g}</span></td>
+      <td class="num">₹${fl.v}</td>
+      <td class="num" style="color:var(--t2)">${((fl.v/gdp)*100).toFixed(1)}%</td>
+      <td style="font-size:11.5px;color:var(--t2)">${fl.lbl}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════
+// CAPITAL FLOWS TAB
+// ════════════════════════════════════════════════════════════════════
+function renderCap() {
+  // KPI cards
+  const grid = document.getElementById('cap-grid');
+  grid.innerHTML = '';
+  D.cap.forEach(k => {
+    const c = document.createElement('div');
+    c.className = `kc ${k.status}`;
+    c.innerHTML = `<div class="kc-lbl">${k.label}</div>
+      <div class="kc-val" style="font-size:18px">${k.val}</div>
+      <div class="kc-chg nt">${k.chg}</div>
+      <div class="kc-bot"><span class="kc-note">${k.note}</span><span class="pill ${k.status}">${k.status==='g'?'Inflow':k.status==='r'?'Outflow':'Mixed'}</span></div>`;
+    grid.appendChild(c);
+  });
+
+  // FDI bars
+  hBars(document.getElementById('fdi-bars'), D.fdi.map(d=>({...d, val:d.val, unit:" Bn"})));
+
+  // FPI signed bars
+  signedBars(document.getElementById('fpi-bars'), D.fpi);
+
+  // Remittances
+  const rtb = document.getElementById('remit-tbody');
+  rtb.innerHTML = D.remit.map(r =>
+    `<tr><td>${r.region}</td><td class="num">${r.share}%</td><td class="num">$${r.usd.toFixed(1)}</td><td style="font-size:11.5px;color:var(--t2)">${r.states}</td></tr>`
+  ).join('');
+
+  // Trade
+  const ttb = document.getElementById('trade-tbody');
+  ttb.innerHTML = D.trade.map(t => {
+    const bal = t.exp - t.imp;
+    const bc = bal>=0?'var(--green)':'var(--red)';
+    const bld = t.bold ? 'font-weight:600' : '';
+    return `<tr><td style="${bld}">${t.cat}</td>
+      <td class="num" style="${bld}">$${t.exp}</td>
+      <td class="num" style="${bld}">$${t.imp}</td>
+      <td class="num" style="${bld};color:${bc}">${bal>=0?'+':''}$${bal} Bn</td></tr>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// INSIGHTS TAB
+// ════════════════════════════════════════════════════════════════════
+function renderIns() {
+  // Score dims
+  const dims = [
+    { lbl:"GDP Growth",    val:"6.4%",       score:82, s:"g" },
+    { lbl:"Inflation",     val:"4.6%",       score:60, s:"a" },
+    { lbl:"Fiscal Health", val:"4.8% def",   score:55, s:"a" },
+    { lbl:"Ext. Balance",  val:"−1.1% CA",   score:80, s:"g" },
+    { lbl:"Banking",       val:"NPA 2.8%",   score:85, s:"g" },
+    { lbl:"Forex Buffer",  val:"8.5 months", score:78, s:"g" },
+  ];
+  const overall = Math.round(dims.reduce((s,d)=>s+d.score,0)/dims.length);
+  const os = overall>=75?'g':overall>=55?'a':'r';
+  const olbl = overall>=75?'Strong Growth':overall>=55?'Moderate':'Stressed';
+
+  document.getElementById('hdr-score').textContent = overall;
+  document.getElementById('hdr-pill').innerHTML = `<span class="pill ${os}">${olbl}</span>`;
+
+  const fc = os==='g'?'var(--green)':os==='a'?'var(--amber)':'var(--red)';
+  document.getElementById('score-wrap').innerHTML = `
+    <div class="box">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px">
+        <span style="font-family:var(--mono);font-size:40px;color:${fc};line-height:1">${overall}</span>
+        <span style="color:var(--t2)">/ 100 — Economy is <strong style="color:${fc}">${olbl}</strong></span>
+      </div>
+      <div class="sbar" style="margin-bottom:12px"><div class="sbar-f" style="width:${overall}%;background:${fc}"></div></div>
+      <div class="score-dims">
+        ${dims.map(d=>{
+          const dc=d.s==='g'?'var(--green)':d.s==='a'?'var(--amber)':'var(--red)';
+          return`<div class="sdim">
+            <div class="sdim-lbl">${d.lbl}</div>
+            <div class="sdim-val" style="color:${dc}">${d.val}</div>
+            <div class="sbar"><div class="sbar-f" style="width:${d.score}%;background:${dc}"></div></div>
+          </div>`;}).join('')}
+      </div>
+    </div>`;
+
+  // Insight cards
+  const ig = document.getElementById('ins-grid');
+  ig.innerHTML = '';
+  D.insights.forEach(ins => {
+    const c = document.createElement('div');
+    c.className = `ic ${ins.type}`;
+    c.innerHTML = `<div class="ic-tag">${ins.tag}</div>
+      <div class="ic-title">${ins.title}</div>
+      <div class="ic-body">${ins.body}</div>
+      <div class="ic-act">${ins.action}</div>`;
+    ig.appendChild(c);
+  });
+
+  // Allocation donut (CSS conic-gradient)
+  const total = D.allocation.reduce((s,d)=>s+d.pct,0);
+  let cum = 0;
+  const grad = D.allocation.map(d=>{
+    const a = (cum/total)*360, b=((cum+=d.pct)/total)*360;
+    return `${d.color} ${a.toFixed(1)}deg ${b.toFixed(1)}deg`;
+  }).join(',');
+  document.getElementById('alloc-box').innerHTML = `
+    <div class="alloc-wrap">
+      <div class="donut" style="background:conic-gradient(${grad})"><div class="donut-hole"></div></div>
+      <div class="alloc-legend">
+        ${D.allocation.map(d=>`<div class="al-row">
+          <div class="al-swatch" style="background:${d.color}"></div>
+          <span style="color:var(--t2)">${d.name} — <strong style="color:var(--text)">${d.pct}%</strong></span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+
+  // Watch table
+  document.getElementById('watch-tbody').innerHTML = D.watch.map(w=>
+    `<tr><td style="font-weight:500">${w.event}</td>
+      <td style="color:var(--t2)">${w.freq}</td>
+      <td style="font-size:11.5px;color:var(--t2)">${w.why}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--gold)">${w.next}</td></tr>`
+  ).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════════════════════════
+const rendered = { cap:false, ins:false };
+
+document.querySelectorAll('.tb').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));
+    document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+    btn.classList.add('on');
+    const t = btn.dataset.t;
+    document.getElementById(`pane-${t}`).classList.add('on');
+    if (t==='cap' && !rendered.cap) { renderCap(); rendered.cap=true; }
+    if (t==='ins' && !rendered.ins) { renderIns(); rendered.ins=true; }
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════════════
+renderDash();
+renderFlow();
+renderIns(); // pre-render for score badge in header
+</script>

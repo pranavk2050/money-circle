@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Circulatory System of the Rupee</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="title-block">
+    <h1>The Circulatory System of the Rupee</h1>
+    <p class="subtitle">How money moves through the Indian economy — a living map of annual flows</p>
+  </div>
+  <button id="info-toggle" class="icon-btn" aria-label="About this data" title="About this data">i</button>
+</header>
+
+<div id="about-panel" class="about-panel">
+  <p>Figures are an illustrative, order-of-magnitude model (₹ lakh crore per year), grounded in
+  approximate FY2024–25 public data — RBI Annual Report &amp; Monetary Policy Report, Union Budget
+  documents, CSO National Accounts, Ministry of Commerce trade statistics and World Bank remittance
+  estimates — recalled from training data rather than freshly looked up. Treat this as a teaching
+  visualization of scale and direction, not an audited national-accounts reconciliation.</p>
+  <button id="about-close" class="text-btn">Close</button>
+</div>
+
+<main id="stage">
+  <svg id="sankey-svg"></svg>
+  <canvas id="particle-canvas"></canvas>
+</main>
+
+<aside id="inspector" class="inspector">
+  <button id="inspector-close" class="icon-btn" aria-label="Close">×</button>
+  <h2 id="inspector-title"></h2>
+  <div id="inspector-body"></div>
+</aside>
+
+<footer class="controls">
+  <div class="transport">
+    <button id="play-toggle" class="text-btn">Pause</button>
+    <label class="speed-label">
+      Speed
+      <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1" />
+    </label>
+  </div>
+  <div id="legend" class="legend"></div>
+</footer>
+
+<script src="bundle.js"></script>
+</body>
+</html>
