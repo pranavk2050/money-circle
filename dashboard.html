@@ -140,6 +140,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       <button class="tb" data-t="flow">Money Flow</button>
       <button class="tb" data-t="cap">Capital Flows</button>
       <button class="tb" data-t="sec">Sectors</button>
+      <button class="tb" data-t="st">States</button>
       <button class="tb" data-t="ins">My Insights</button>
     </div>
   </div>
@@ -245,6 +246,40 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
         <table class="tbl"><thead><tr><th>Industry</th><th>Market Size Now</th><th>2030 Target</th><th>CAGR</th><th>Govt Push</th><th>Best Play</th></tr></thead>
         <tbody id="opp-tbody"></tbody></table>
       </div>
+    </div>
+
+    <!-- States -->
+    <div id="pane-st" class="pane">
+      <div class="sh">Regional Economy Overview — FY 2024-25</div>
+      <div class="kg" id="region-grid"></div>
+      <div class="sh">State GSDP Ranking — Top 25 States (₹ Lakh Crore) · Click column headers to sort</div>
+      <div class="box" style="overflow-x:auto">
+        <table class="tbl" id="state-tbl">
+          <thead><tr>
+            <th>#</th>
+            <th data-sort="name"  class="sortable">State ↕</th>
+            <th data-sort="gsdp"  class="sortable">GSDP ₹LCr ↕</th>
+            <th data-sort="pci"   class="sortable">Per Capita ₹ ↕</th>
+            <th data-sort="grow"  class="sortable">Growth % ↕</th>
+            <th data-sort="rank"  class="sortable">EoDB Rank ↕</th>
+            <th>Key Sectors</th>
+            <th>Region</th>
+          </tr></thead>
+          <tbody id="state-tbody"></tbody>
+        </table>
+      </div>
+      <div class="two" style="margin-top:4px">
+        <div>
+          <div class="sh">GSDP Bar Chart (₹ Lakh Crore)</div>
+          <div class="box"><div id="gsdp-bars"></div></div>
+        </div>
+        <div>
+          <div class="sh">Per Capita Income Ranking (₹/year)</div>
+          <div class="box"><div id="pci-bars"></div></div>
+        </div>
+      </div>
+      <div class="sh">Industrial Corridors &amp; Economic Zones</div>
+      <div class="ig" id="corridor-grid"></div>
     </div>
 
     <!-- Insights -->
@@ -359,6 +394,85 @@ const D = {
     { cat:"Software & IT Svcs",  exp:248, imp: 12 },
     { cat:"Other Services",      exp: 91, imp:163 },
     { cat:"TOTAL",               exp:776, imp:853, bold:true },
+  ],
+
+  // ── State Economic Data (FY2024-25 est.) ───────────────────────
+  // Sources: MoSPI GSDP estimates · State Budget documents · DPIIT EoDB rankings
+  // gsdp: ₹ lakh crore | pci: ₹/year | grow: % real YoY | rank: DPIIT EoDB 2023
+  states: [
+    { name:"Maharashtra",       region:"West",      gsdp:40.2, pci:280000, grow:7.5, rank: 7,  color:"#D4A92A", sectors:"Finance, IT, Manufacturing, Pharma" },
+    { name:"Tamil Nadu",        region:"South",     gsdp:27.4, pci:250000, grow:7.8, rank: 2,  color:"#3E8E7E", sectors:"Auto, Electronics, Textiles, IT" },
+    { name:"Uttar Pradesh",     region:"North",     gsdp:25.0, pci: 80000, grow:7.5, rank:12,  color:"#5B8FBF", sectors:"Agri, MSME, Leather, Sugar" },
+    { name:"Karnataka",         region:"South",     gsdp:24.8, pci:265000, grow:8.5, rank: 3,  color:"#3E8E7E", sectors:"IT, Aerospace, Biotech, Mining" },
+    { name:"Gujarat",           region:"West",      gsdp:24.0, pci:230000, grow:8.0, rank: 1,  color:"#D4A92A", sectors:"Petrochems, Pharma, Textiles, Ports" },
+    { name:"West Bengal",       region:"East",      gsdp:17.8, pci:130000, grow:6.8, rank:16,  color:"#8A6FB0", sectors:"Jute, Tea, Leather, Services" },
+    { name:"Rajasthan",         region:"North",     gsdp:16.5, pci:140000, grow:9.5, rank: 8,  color:"#5B8FBF", sectors:"Mining, Tourism, Agri, Handicrafts" },
+    { name:"Madhya Pradesh",    region:"Central",   gsdp:13.5, pci:110000, grow:8.0, rank: 6,  color:"#B5651D", sectors:"Agri, Mining, Manufacturing, Tourism" },
+    { name:"Andhra Pradesh",    region:"South",     gsdp:13.2, pci:165000, grow:7.4, rank: 4,  color:"#3E8E7E", sectors:"Agri, Pharma, Marine, Spices" },
+    { name:"Telangana",         region:"South",     gsdp:14.0, pci:220000, grow:9.0, rank: 9,  color:"#3E8E7E", sectors:"IT, Pharma, Manufacturing, Services" },
+    { name:"Kerala",            region:"South",     gsdp:12.2, pci:210000, grow:7.0, rank:11,  color:"#3E8E7E", sectors:"Tourism, Cashews, Spices, Remittances" },
+    { name:"Haryana",           region:"North",     gsdp:10.8, pci:265000, grow:7.2, rank: 5,  color:"#5B8FBF", sectors:"Auto, IT/ITeS, Agri, Textiles" },
+    { name:"Delhi",             region:"North",     gsdp:11.5, pci:430000, grow:7.8, rank:13,  color:"#5B8FBF", sectors:"Services, Trade, Finance, Tourism" },
+    { name:"Bihar",             region:"East",      gsdp: 8.8, pci: 50000, grow:7.8, rank:19,  color:"#8A6FB0", sectors:"Agri, Construction, Food Processing" },
+    { name:"Punjab",            region:"North",     gsdp: 8.2, pci:180000, grow:5.8, rank:14,  color:"#5B8FBF", sectors:"Agri, Food Processing, Textiles, SMEs" },
+    { name:"Odisha",            region:"East",      gsdp: 8.0, pci:125000, grow:8.2, rank:10,  color:"#8A6FB0", sectors:"Mining, Steel, Ports, Tourism" },
+    { name:"Assam",             region:"Northeast", gsdp: 5.8, pci: 95000, grow:7.0, rank:17,  color:"#4FA3A3", sectors:"Oil, Tea, Agri, Bamboo" },
+    { name:"Jharkhand",         region:"East",      gsdp: 4.8, pci:100000, grow:7.5, rank:15,  color:"#8A6FB0", sectors:"Mining, Steel, Cement, Forest Products" },
+    { name:"Chhattisgarh",      region:"Central",   gsdp: 4.6, pci:108000, grow:7.0, rank:18,  color:"#B5651D", sectors:"Steel, Mining, Agri, Forest Products" },
+    { name:"Uttarakhand",       region:"North",     gsdp: 3.8, pci:195000, grow:7.5, rank:20,  color:"#5B8FBF", sectors:"Pharma, Hydro Power, Tourism, IT" },
+    { name:"Himachal Pradesh",  region:"North",     gsdp: 2.6, pci:190000, grow:7.2, rank:21,  color:"#5B8FBF", sectors:"Hydro Power, Tourism, Horticulture, Pharma" },
+    { name:"Goa",               region:"West",      gsdp: 1.1, pci:550000, grow:8.0, rank:22,  color:"#D4A92A", sectors:"Tourism, Mining, Pharma, Shipbuilding" },
+    { name:"Tripura",           region:"Northeast", gsdp: 0.8, pci: 90000, grow:7.8, rank:23,  color:"#4FA3A3", sectors:"Agri, Natural Gas, Bamboo, Tourism" },
+    { name:"Meghalaya",         region:"Northeast", gsdp: 0.5, pci: 85000, grow:6.5, rank:24,  color:"#4FA3A3", sectors:"Mining, Tourism, Agri, Forest Products" },
+    { name:"Sikkim",            region:"Northeast", gsdp: 0.4, pci:490000, grow:9.2, rank:25,  color:"#4FA3A3", sectors:"Hydro Power, Tourism, Organic Farming" },
+  ],
+
+  regions: [
+    { name:"South",     states:["Tamil Nadu","Karnataka","Andhra Pradesh","Telangana","Kerala"],
+      gsdp:91.6, growth:"8.1%", color:"#3E8E7E", highlight:"IT + Pharma powerhouse; highest export intensity" },
+    { name:"West",      states:["Maharashtra","Gujarat","Goa"],
+      gsdp:65.3, growth:"7.7%", color:"#D4A92A", highlight:"Financial capital + manufacturing + ports hub" },
+    { name:"North",     states:["UP","Delhi","Rajasthan","Haryana","Punjab","Uttarakhand","HP"],
+      gsdp:76.4, growth:"7.6%", color:"#5B8FBF", highlight:"Largest population; fastest growing via UP rise" },
+    { name:"East",      states:["West Bengal","Bihar","Odisha","Jharkhand"],
+      gsdp:39.4, growth:"7.6%", color:"#8A6FB0", highlight:"Mineral-rich; untapped manufacturing potential" },
+    { name:"Central",   states:["Madhya Pradesh","Chhattisgarh"],
+      gsdp:18.1, growth:"7.5%", color:"#B5651D", highlight:"Resource-rich; agri + mining base; infra gap closing" },
+    { name:"Northeast", states:["Assam","Tripura","Meghalaya","Sikkim","Others"],
+      gsdp: 8.0, growth:"7.5%", color:"#4FA3A3", highlight:"Act East policy; tourism + hydro + agri emerging" },
+  ],
+
+  corridors: [
+    { name:"Delhi–Mumbai Industrial Corridor (DMIC)",
+      states:"Delhi, Haryana, Rajasthan, Gujarat, Maharashtra",
+      length:"1,504 km", invest:"$100 Bn (planned)", status:"Phase 1 active",
+      body:"World's largest infra project. 24 manufacturing cities, 8 smart cities. Key nodes: DNGIR (Haryana), Ahmedabad-Dholera SIR, AURIC (Aurangabad).",
+      note:"Biggest job-creation bet of the decade." },
+    { name:"Chennai–Bengaluru Industrial Corridor (CBIC)",
+      states:"Tamil Nadu, Karnataka, Andhra Pradesh",
+      length:"560 km", invest:"$20 Bn", status:"Planning to construction",
+      body:"Connecting India's IT capital with auto/electronics hub. Covers Hosur, Krishnagiri, Tumkur. Heavy electronics & EV focus.",
+      note:"EV supply chain and electronics manufacturing backbone." },
+    { name:"Amritsar–Kolkata Industrial Corridor (AKIC)",
+      states:"Punjab, Haryana, UP, Bihar, Jharkhand, West Bengal",
+      length:"1,839 km", invest:"$30 Bn", status:"Early planning",
+      body:"Traverses BIMARU states. Massive potential to unlock low-cost manufacturing, food processing, and logistics in the Gangetic plain.",
+      note:"If executed well, could halve poverty in the Hindi belt." },
+    { name:"Vizag–Chennai Industrial Corridor (VCIC)",
+      states:"Andhra Pradesh",
+      length:"800 km", invest:"$15 Bn", status:"ADB-assisted, active",
+      body:"Petroleum, pharma, shipbuilding, ports focus. Includes Vishakhapatnam smart city. Strong maritime export potential.",
+      note:"Critical for Andhra Pradesh's post-bifurcation growth story." },
+    { name:"Special Economic Zones (SEZs)",
+      states:"Pan-India — 423 notified, 274 operational",
+      length:"Pan-India", invest:"₹8.5 LCr exports (FY24)", status:"Operational",
+      body:"SEEPZ (Mumbai), NOIDA SEZ, Kandla, Surat, Cochin, Vizag. IT-SEZs led by TCS, Infosys campuses. Govt reviewing SEZ Act for WTO compliance.",
+      note:"90%+ of SEZ exports are from IT/ITeS — manufacturing SEZs lagging." },
+    { name:"PLI-Linked Manufacturing Hubs",
+      states:"Gujarat, Maharashtra, Karnataka, Tamil Nadu, UP, Rajasthan",
+      length:"14 sectors", invest:"₹1.97 LCr total outlay", status:"Disbursements began FY24",
+      body:"Production-Linked Incentive across mobiles, pharma API, medical devices, solar modules, auto components, white goods, textiles, food processing.",
+      note:"Apple suppliers (Foxconn, Pegatron, Wistron) anchor mobile PLI in Tamil Nadu." },
   ],
 
   // ── Sector Market Capitalisation (BSE, ₹ LCr, Mar 2025 est.) ──
@@ -967,9 +1081,106 @@ function renderSec() {
 }
 
 // ════════════════════════════════════════════════════════════════════
+// STATES TAB
+// ════════════════════════════════════════════════════════════════════
+function renderStates() {
+  // Region KPI cards
+  const rg = document.getElementById('region-grid');
+  rg.innerHTML = '';
+  D.regions.forEach(r => {
+    const c = document.createElement('div');
+    c.className = 'kc g';
+    c.style.borderTopColor = r.color;
+    c.innerHTML = `
+      <div class="kc-lbl" style="color:${r.color}">${r.name} India</div>
+      <div><span class="kc-val" style="font-size:18px">₹${r.gsdp}</span><span class="kc-unit">LCr GSDP</span></div>
+      <div class="kc-chg up">▲ ${r.growth} avg growth</div>
+      <div class="kc-bot"><span class="kc-note" style="font-size:10.5px">${r.highlight}</span></div>`;
+    rg.appendChild(c);
+  });
+
+  // Sortable state table
+  let sortKey = 'gsdp', sortDir = -1;
+  function drawTable() {
+    const sorted = [...D.states].sort((a,b) => {
+      const av = a[sortKey], bv = b[sortKey];
+      return typeof av === 'string' ? av.localeCompare(bv)*sortDir : (av-bv)*sortDir;
+    });
+    const tbody = document.getElementById('state-tbody');
+    tbody.innerHTML = '';
+    sorted.forEach((s,i) => {
+      const tr = document.createElement('tr');
+      const gc = s.grow >= 8.5 ? 'var(--green)' : s.grow >= 7 ? 'var(--amber)' : 'var(--red)';
+      tr.innerHTML = `
+        <td style="color:var(--t3);font-size:11px">${i+1}</td>
+        <td style="font-weight:500;white-space:nowrap">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${s.color};margin-right:6px;flex-shrink:0"></span>${s.name}
+        </td>
+        <td class="num">₹${s.gsdp.toFixed(1)}</td>
+        <td class="num">₹${s.pci.toLocaleString('en-IN')}</td>
+        <td class="num" style="color:${gc}">${s.grow}%</td>
+        <td class="num" style="color:var(--t2)">#${s.rank}</td>
+        <td style="font-size:11px;color:var(--t3)">${s.sectors}</td>
+        <td><span style="font-size:10px;padding:2px 6px;border-radius:2px;background:${s.color}22;color:${s.color}">${s.region}</span></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+  drawTable();
+
+  document.querySelectorAll('#state-tbl th.sortable').forEach(th => {
+    th.style.cursor = 'pointer';
+    th.style.userSelect = 'none';
+    th.addEventListener('click', () => {
+      const k = th.dataset.sort;
+      if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = -1; }
+      drawTable();
+    });
+  });
+
+  // GSDP bars
+  const topG = [...D.states].sort((a,b)=>b.gsdp-a.gsdp).slice(0,15);
+  const maxG = topG[0].gsdp;
+  document.getElementById('gsdp-bars').innerHTML = `<div class="bars">${topG.map(s=>`
+    <div class="bar-row" style="grid-template-columns:110px 1fr 70px">
+      <span class="bar-lbl" title="${s.name}">${s.name}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${(s.gsdp/maxG*100).toFixed(1)}%;background:${s.color}"></div></div>
+      <span class="bar-num">₹${s.gsdp.toFixed(1)}</span>
+    </div>`).join('')}</div>`;
+
+  // Per capita bars (top 15 by PCI)
+  const topP = [...D.states].sort((a,b)=>b.pci-a.pci).slice(0,15);
+  const maxP = topP[0].pci;
+  document.getElementById('pci-bars').innerHTML = `<div class="bars">${topP.map(s=>`
+    <div class="bar-row" style="grid-template-columns:110px 1fr 80px">
+      <span class="bar-lbl" title="${s.name}">${s.name}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${(s.pci/maxP*100).toFixed(1)}%;background:${s.color}"></div></div>
+      <span class="bar-num">₹${(s.pci/1000).toFixed(0)}k</span>
+    </div>`).join('')}</div>`;
+
+  // Corridors
+  const cg = document.getElementById('corridor-grid');
+  cg.innerHTML = '';
+  D.corridors.forEach(cr => {
+    const c = document.createElement('div');
+    c.className = 'ic';
+    c.style.borderLeftColor = 'var(--gold)';
+    c.innerHTML = `
+      <div class="ic-tag">${cr.status}</div>
+      <div class="ic-title" style="font-size:13px">${cr.name}</div>
+      <div style="display:flex;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+        <span style="font-size:10.5px;color:var(--t2)">📍 ${cr.states}</span>
+        <span style="font-size:10.5px;color:var(--gold)">💰 ${cr.invest}</span>
+      </div>
+      <div class="ic-body">${cr.body}</div>
+      <div class="ic-act">${cr.note}</div>`;
+    cg.appendChild(c);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════
 // TABS
 // ════════════════════════════════════════════════════════════════════
-const rendered = { cap:false, sec:false, ins:false };
+const rendered = { cap:false, sec:false, st:false, ins:false };
 
 document.querySelectorAll('.tb').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -980,6 +1191,7 @@ document.querySelectorAll('.tb').forEach(btn => {
     document.getElementById(`pane-${t}`).classList.add('on');
     if (t==='cap' && !rendered.cap) { renderCap(); rendered.cap=true; }
     if (t==='sec' && !rendered.sec) { renderSec(); rendered.sec=true; }
+    if (t==='st'  && !rendered.st)  { renderStates(); rendered.st=true; }
     if (t==='ins' && !rendered.ins) { renderIns(); rendered.ins=true; }
   });
 });
