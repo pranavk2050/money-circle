@@ -1542,6 +1542,8 @@ const LIVE_SOURCES = [
       const m = D.macro.find(m => m.id === 'gdp');
       m.chg  = `+${raw.toFixed(1)}% real growth (${year})`;
       m.note = `World Bank · FY${year}`;
+      const r = D.ratios.find(r => r.name === 'GDP Growth');
+      if (r) { r.val = `${raw.toFixed(1)}%`; r.note = `World Bank ${year}`; r.status = raw >= 7 ? 'g' : raw >= 5.5 ? 'a' : 'r'; }
     }
   },
   {
@@ -1560,6 +1562,8 @@ const LIVE_SOURCES = [
       m.val  = +raw.toFixed(1);
       m.note = `World Bank · ${year}`;
       m.status = raw > 6 ? 'r' : raw > 4 ? 'a' : 'g';
+      const r = D.ratios.find(r => r.name === 'CPI Inflation');
+      if (r) { r.val = `${raw.toFixed(1)}%`; r.note = `World Bank ${year}`; r.status = m.status; }
     }
   },
   {
@@ -1578,6 +1582,8 @@ const LIVE_SOURCES = [
       m.val  = +raw.toFixed(1);
       m.note = `World Bank · ${year}`;
       m.status = raw < -3 ? 'r' : raw < -2 ? 'a' : 'g';
+      const r = D.ratios.find(r => r.name === 'Current Account');
+      if (r) { r.val = `${raw.toFixed(1)}% GDP`; r.note = `World Bank ${year}`; r.status = m.status; }
     }
   },
   {
@@ -1596,6 +1602,9 @@ const LIVE_SOURCES = [
       const m = D.macro.find(m => m.id === 'forex');
       m.val  = +raw.toFixed(0);
       m.note = `World Bank · ${year}`;
+      const months = (raw / 75).toFixed(1); // rough import cover estimate
+      const r = D.ratios.find(r => r.name === 'Forex Cover');
+      if (r) { r.val = `${months} months`; r.note = `World Bank ${year} · $${raw.toFixed(0)}bn`; r.status = months >= 6 ? 'g' : months >= 4 ? 'a' : 'r'; }
     }
   },
   {
@@ -1687,6 +1696,10 @@ async function fetchLiveData() {
   buildMacroPane();
   buildTaxBankPane();
   buildCapPane();
+
+  // Re-render dashboard immediately + persist to localStorage
+  reRenderAll();
+  saveToDisk();
 
   btn.disabled    = false;
   btn.textContent = `✅ ${ok}/${LIVE_SOURCES.length} updated`;
