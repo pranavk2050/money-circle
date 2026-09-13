@@ -139,6 +139,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       <button class="tb on" data-t="dash">Dashboard</button>
       <button class="tb" data-t="flow">Money Flow</button>
       <button class="tb" data-t="cap">Capital Flows</button>
+      <button class="tb" data-t="sec">Sectors</button>
       <button class="tb" data-t="ins">My Insights</button>
     </div>
   </div>
@@ -215,6 +216,34 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
       <div class="box">
         <table class="tbl"><thead><tr><th>Category</th><th>Exports</th><th>Imports</th><th>Balance</th></tr></thead>
         <tbody id="trade-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- Sectors -->
+    <div id="pane-sec" class="pane">
+      <div class="sh">BSE Sector Market Capitalisation — FY 2024-25 (₹ Lakh Crore)</div>
+      <div class="box" id="sec-mcap-box"></div>
+      <div class="two" style="margin-top:14px">
+        <div>
+          <div class="sh">GDP Composition by Broad Sector (FY24-25)</div>
+          <div class="box" id="gdp-comp-box"></div>
+        </div>
+        <div>
+          <div class="sh">Key Sector Metrics</div>
+          <div class="box">
+            <table class="tbl" id="sec-metrics-tbl">
+              <thead><tr><th>Sector</th><th>Mkt Cap ₹LCr</th><th>Mkt Cap %</th><th>YoY Chg</th><th>Key Driver</th></tr></thead>
+              <tbody id="sec-metrics-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="sh">Emerging &amp; High-Growth Industries — India's Next Decade</div>
+      <div class="ig" id="emerging-grid"></div>
+      <div class="sh">Sector Opportunity Matrix</div>
+      <div class="box">
+        <table class="tbl"><thead><tr><th>Industry</th><th>Market Size Now</th><th>2030 Target</th><th>CAGR</th><th>Govt Push</th><th>Best Play</th></tr></thead>
+        <tbody id="opp-tbody"></tbody></table>
       </div>
     </div>
 
@@ -330,6 +359,78 @@ const D = {
     { cat:"Software & IT Svcs",  exp:248, imp: 12 },
     { cat:"Other Services",      exp: 91, imp:163 },
     { cat:"TOTAL",               exp:776, imp:853, bold:true },
+  ],
+
+  // ── Sector Market Capitalisation (BSE, ₹ LCr, Mar 2025 est.) ──
+  // Source: BSE India sector indices · NSE Market Cap data
+  sectors: [
+    { name:"Financial Services",  mcap:82,  chg:"+12%", color:"#3E8E7E",  driver:"NIM expansion, credit growth 16%" },
+    { name:"IT & Technology",      mcap:44,  chg:"−4%",  color:"#5B8FBF",  driver:"US slowdown drag; AI pivot underway" },
+    { name:"Oil, Gas & Energy",    mcap:32,  chg:"+8%",  color:"#B5651D",  driver:"Refining margins, green energy capex" },
+    { name:"FMCG",                 mcap:27,  chg:"+6%",  color:"#C9A227",  driver:"Rural demand recovery, premiumisation" },
+    { name:"Healthcare & Pharma",  mcap:22,  chg:"+18%", color:"#4FA3A3",  driver:"US generics, domestic chronic therapy" },
+    { name:"Automobile",           mcap:20,  chg:"+22%", color:"#C1587A",  driver:"EV ramp-up, premiumisation, exports" },
+    { name:"Capital Goods",        mcap:17,  chg:"+31%", color:"#8A6FB0",  driver:"Govt capex ₹11 LCr, PLI manufacturing" },
+    { name:"Power & Utilities",    mcap:14,  chg:"+26%", color:"#D4A92A",  driver:"500GW renewable target, T&D upgrade" },
+    { name:"Metals & Mining",      mcap:13,  chg:"+9%",  color:"#6E7B6D",  driver:"China recovery, domestic infra demand" },
+    { name:"Telecom",              mcap:11,  chg:"+15%", color:"#2E86AB",  driver:"ARPU hike cycle, 5G rollout" },
+    { name:"Real Estate",          mcap: 9,  chg:"+28%", color:"#A23B72",  driver:"Housing demand boom in Tier 1 cities" },
+    { name:"Consumer Durables",    mcap: 6,  chg:"+11%", color:"#F18F01",  driver:"Premiumisation, AC penetration rise" },
+    { name:"Chemicals",            mcap: 5,  chg:"−2%",  color:"#C73E1D",  driver:"China+1; slow recovery in speciality" },
+  ],
+
+  gdpComp: [
+    { name:"Services (IT, Finance, Trade, Hotels, Transport)", pct:55, color:"#3E8E7E" },
+    { name:"Industry (Mfg, Construction, Mining)",              pct:27, color:"#8A6FB0" },
+    { name:"Agriculture, Forestry & Fishing",                   pct:18, color:"#C9A227" },
+  ],
+
+  // ── Emerging industries ─────────────────────────────────────────
+  // Source: NITI Aayog reports · MoCI PLI scheme data · industry estimates
+  emerging: [
+    { tag:"EV & Mobility",     cagr:"40%", size:"$8 Bn → $113 Bn",
+      body:"India to become world's 3rd-largest EV market by 2030. Two-wheelers (80% of market) lead. PLI scheme commits ₹26,000 Cr.",
+      action:"Watch: Tata Motors, M&M EV, Ola Electric (IPO), battery/charging infra suppliers. MSME supplier base is the multiplier." },
+    { tag:"Semiconductors",    cagr:"22%", size:"$27 Bn → $100 Bn",
+      body:"India Semiconductor Mission: ₹76,000 Cr incentive. Micron, Tata-PSMC fabs under construction in Gujarat and Assam.",
+      action:"Direct equity hard (no listed pure-plays yet). Watch Electronics/IT ETFs. Component SMEs in PCB, packaging will benefit early." },
+    { tag:"Green Hydrogen",    cagr:"30%", size:"$2 Bn → $8 Bn",
+      body:"National Green Hydrogen Mission targets 5 MTPA by 2030, ₹19,744 Cr outlay. India aims to be export hub for Europe & Japan.",
+      action:"NTPC, Adani Green, Torrent, L&T — all have major GH2 projects. Still pre-revenue; high-risk, long horizon." },
+    { tag:"Data Centres",      cagr:"25%", size:"$4 Bn → $14 Bn",
+      body:"Cloud + AI demand exploding. India's DC capacity to triple by 2027. Hyperscalers (AWS, Google, Microsoft) committing $6bn+.",
+      action:"STT GDC, NTT, Adani Enterprises (DC infra). Power and cooling infrastructure suppliers are the hidden play." },
+    { tag:"Defence Mfg",       cagr:"18%", size:"₹1 LCr → ₹3 LCr",
+      body:"Indigenisation mandate: 68% of defence budget must go to domestic procurement. Exports crossed ₹21,000 Cr in FY24 — record high.",
+      action:"Bharat Electronics (BEL), HAL, Data Patterns, Paras Defence. Sector PE is high; buy dips on budget/order news." },
+    { tag:"Space Tech",        cagr:"35%", size:"$8 Bn → $44 Bn",
+      body:"IN-SPACe opened commercial space to private players. 200+ startups. ISRO's commercial arm (NewSpace India) enabling launches.",
+      action:"No listed pure-plays yet. Track Skyroot, Agnikul, Pixxel (private). Adjacent: MTAR Technologies (rocket components, listed)." },
+    { tag:"Fintech & UPI",     cagr:"20%", size:"$111 Bn → $420 Bn",
+      body:"UPI processed 18,000 Cr transactions in FY25. Credit on UPI, cross-border expansion (Singapore, UAE, France) opening new TAM.",
+      action:"Paytm (high-risk turnaround), PB Fintech (PolicyBazaar), One97. Banks with strong digital moat: HDFC, Kotak Digital." },
+    { tag:"AI & Deep Tech",    cagr:"28%", size:"$6 Bn → $17 Bn",
+      body:"Govt's ₹10,300 Cr IndiaAI mission. 1,400+ AI startups. BPO/IT transition from outsourcing to AI-augmented services.",
+      action:"Infosys, TCS, Wipro — re-rating play if AI revenue materialises. Watch vertical SaaS cos building India-first AI products." },
+    { tag:"Renewable Energy",  cagr:"22%", size:"195 GW → 500 GW",
+      body:"India's 500GW non-fossil target by 2030. Solar, wind, pumped hydro all scaling. Largest capacity addition in 2024 since independence.",
+      action:"Adani Green, NTPC Renewable, Greenko (unlisted). Green infra bonds are a debt alternative to equity. REITs linked to clean infra coming." },
+    { tag:"Chemicals (Specialty)", cagr:"15%", size:"$35 Bn → $75 Bn",
+      body:"China+1 strategy drives global chemical sourcing shift to India. Crop protection, pharma APIs, dyes & pigments, electronic chemicals.",
+      action:"PI Industries, SRF, Aarti Industries, Navin Fluorine. Near-term headwinds from China dumping; buy on multi-quarter recovery signals." },
+  ],
+
+  opportunities: [
+    { ind:"Electric Vehicles",  now:"$8 Bn",   target:"$113 Bn", cagr:"40%", push:"PLI ₹26K Cr, FAME-III",        play:"Tata Motors EV, M&M, Exide/Amara Raja (batteries)" },
+    { ind:"Semiconductors",     now:"$27 Bn",   target:"$100 Bn",cagr:"22%", push:"₹76K Cr ISM incentives",        play:"Electronics ETF; MTAR, Kaynes Tech" },
+    { ind:"Renewable Energy",   now:"195 GW",   target:"500 GW", cagr:"22%", push:"MNRE, RE RPO mandates",         play:"Adani Green, NTPC RE, green infra bonds" },
+    { ind:"Defence Mfg",        now:"₹1 LCr",   target:"₹3 LCr",cagr:"18%", push:"68% domestic procurement rule", play:"BEL, HAL, Data Patterns, Paras Defence" },
+    { ind:"Data Centres",       now:"$4 Bn",    target:"$14 Bn", cagr:"25%", push:"Digital India, IT Act reforms", play:"STT GDC, Adani Ent DC arm, power suppliers" },
+    { ind:"Green Hydrogen",     now:"$2 Bn",    target:"$8 Bn",  cagr:"30%", push:"NGHM ₹19,744 Cr",              play:"NTPC, Adani Green, L&T (high risk/horizon)" },
+    { ind:"Space Tech",         now:"$8 Bn",    target:"$44 Bn", cagr:"35%", push:"IN-SPACe policy, ISRO NewSpace",play:"MTAR Tech (components); private cos pre-IPO" },
+    { ind:"Fintech",            now:"$111 Bn",  target:"$420 Bn",cagr:"20%", push:"UPI global, RBI sandbox",       play:"PB Fintech, Paytm (risk), digital-first banks" },
+    { ind:"AI & SaaS",          now:"$6 Bn",    target:"$17 Bn", cagr:"28%", push:"IndiaAI mission ₹10,300 Cr",   play:"Infosys, TCS (re-rating); vertical SaaS" },
+    { ind:"Specialty Chemicals",now:"$35 Bn",   target:"$75 Bn", cagr:"15%", push:"China+1, PLI chemicals",        play:"PI Industries, SRF, Aarti Industries" },
   ],
 
   // ── Money flows (₹ LCr/year FY2024-25 est.) ───────────────────
@@ -783,9 +884,92 @@ function renderIns() {
 }
 
 // ════════════════════════════════════════════════════════════════════
+// SECTORS TAB
+// ════════════════════════════════════════════════════════════════════
+function renderSec() {
+  const totalMcap = D.sectors.reduce((s,d)=>s+d.mcap, 0);
+  const maxMcap   = Math.max(...D.sectors.map(d=>d.mcap));
+
+  // Market cap bar chart (full width, with % label)
+  document.getElementById('sec-mcap-box').innerHTML = `
+    <div class="bars">
+      ${D.sectors.map(d=>`
+        <div class="bar-row" style="grid-template-columns:145px 1fr 90px 55px">
+          <span class="bar-lbl" title="${d.name}">${d.name}</span>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:${(d.mcap/maxMcap*100).toFixed(1)}%;background:${d.color}"></div>
+          </div>
+          <span class="bar-num">₹${d.mcap} LCr</span>
+          <span style="font-size:11px;color:${d.chg.startsWith('+') ? 'var(--green)' : d.chg.startsWith('−') ? 'var(--red)' : 'var(--t2)'};">${d.chg}</span>
+        </div>`).join('')}
+    </div>`;
+
+  // GDP composition donut
+  const gdpTotal = D.gdpComp.reduce((s,d)=>s+d.pct, 0);
+  let cumG = 0;
+  const gradG = D.gdpComp.map(d=>{ const a=(cumG/gdpTotal)*360, b=((cumG+=d.pct)/gdpTotal)*360; return `${d.color} ${a.toFixed(1)}deg ${b.toFixed(1)}deg`; }).join(',');
+  document.getElementById('gdp-comp-box').innerHTML = `
+    <div class="alloc-wrap">
+      <div class="donut" style="background:conic-gradient(${gradG});width:90px;height:90px"><div class="donut-hole"></div></div>
+      <div class="alloc-legend">
+        ${D.gdpComp.map(d=>`<div class="al-row">
+          <div class="al-swatch" style="background:${d.color}"></div>
+          <span style="color:var(--t2);font-size:11.5px">${d.name.split(' (')[0]} — <strong style="color:var(--text)">${d.pct}%</strong></span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+
+  // Sector metrics table
+  const tbody = document.getElementById('sec-metrics-tbody');
+  tbody.innerHTML = '';
+  [...D.sectors].sort((a,b)=>b.mcap-a.mcap).forEach(d=>{
+    const tr = document.createElement('tr');
+    const chgCls = d.chg.startsWith('+') ? 'var(--green)' : d.chg.startsWith('−') ? 'var(--red)' : 'var(--t2)';
+    tr.innerHTML = `
+      <td style="display:flex;align-items:center;gap:7px">
+        <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${d.color};flex-shrink:0"></span>
+        <span style="font-size:12px">${d.name}</span>
+      </td>
+      <td class="num">₹${d.mcap}</td>
+      <td class="num" style="color:var(--t2)">${((d.mcap/totalMcap)*100).toFixed(1)}%</td>
+      <td class="num" style="color:${chgCls}">${d.chg}</td>
+      <td style="font-size:11px;color:var(--t3)">${d.driver}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Emerging industry cards
+  const grid = document.getElementById('emerging-grid');
+  grid.innerHTML = '';
+  D.emerging.forEach(e=>{
+    const c = document.createElement('div');
+    c.className = 'ic pos';
+    c.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+        <div class="ic-tag">${e.tag}</div>
+        <span style="font-family:var(--mono);font-size:12px;color:var(--green)">${e.cagr} CAGR</span>
+      </div>
+      <div class="ic-title" style="font-size:13.5px">${e.size}</div>
+      <div class="ic-body">${e.body}</div>
+      <div class="ic-act">${e.action}</div>`;
+    grid.appendChild(c);
+  });
+
+  // Opportunity matrix table
+  document.getElementById('opp-tbody').innerHTML = D.opportunities.map(o=>`
+    <tr>
+      <td style="font-weight:500;font-size:12.5px">${o.ind}</td>
+      <td class="num" style="font-size:11.5px">${o.now}</td>
+      <td class="num" style="font-size:11.5px;color:var(--green)">${o.target}</td>
+      <td class="num" style="color:var(--green)">${o.cagr}</td>
+      <td style="font-size:11px;color:var(--t2)">${o.push}</td>
+      <td style="font-size:11px;color:var(--t3)">${o.play}</td>
+    </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════
 // TABS
 // ════════════════════════════════════════════════════════════════════
-const rendered = { cap:false, ins:false };
+const rendered = { cap:false, sec:false, ins:false };
 
 document.querySelectorAll('.tb').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -795,6 +979,7 @@ document.querySelectorAll('.tb').forEach(btn => {
     const t = btn.dataset.t;
     document.getElementById(`pane-${t}`).classList.add('on');
     if (t==='cap' && !rendered.cap) { renderCap(); rendered.cap=true; }
+    if (t==='sec' && !rendered.sec) { renderSec(); rendered.sec=true; }
     if (t==='ins' && !rendered.ins) { renderIns(); rendered.ins=true; }
   });
 });
