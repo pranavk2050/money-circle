@@ -394,7 +394,14 @@ let D = {
     { id:"fd",     label:"Fiscal Deficit",       val:4.8,    unit:"% GDP",   chg:"Target: 4.5%",       dir:"nt",   status:"a", note:"FY25 RE — FinMin (FRBM target: 3%)" },
     { id:"ca",     label:"Current Account",      val:-1.1,   unit:"% GDP",   chg:"Manageable range",   dir:"nt",   status:"g", note:"FY25 est — RBI (< 2% = safe)" },
     { id:"inr",    label:"USD / INR",             val:84.5,   unit:"₹",       chg:"−1.2% depreciation", dir:"dn",   status:"a", note:"Mar 2025 — RBI reference rate" },
-    { id:"nifty",  label:"Nifty 50",              val:23000,  unit:"pts",     chg:"P/E ~20x — fair value",dir:"nt", status:"a", note:"Mar 2025 — NSE" },
+    { id:"nifty",  label:"Nifty 50",              val:23000,  unit:"pts",     chg:"P/E ~20x — fair value",  dir:"nt", status:"a", note:"Mar 2025 — NSE" },
+    { id:"sensex", label:"BSE Sensex",            val:76000,  unit:"pts",     chg:"P/E ~24x",               dir:"nt", status:"a", note:"Mar 2025 — BSE" },
+    { id:"nbank",  label:"Nifty Bank",            val:49500,  unit:"pts",     chg:"Credit growth tailwind", dir:"up", status:"g", note:"Mar 2025 — NSE" },
+    { id:"nit",    label:"Nifty IT",              val:37000,  unit:"pts",     chg:"AI pivot underway",      dir:"nt", status:"a", note:"Mar 2025 — NSE" },
+    { id:"gold",   label:"Gold (10g)",            val:74000,  unit:"₹",       chg:"+18% FY25 — safe haven", dir:"up", status:"g", note:"Mar 2025 — MCX" },
+    { id:"crude",  label:"Brent Crude",           val:75,     unit:"$/bbl",   chg:"OPEC+ balancing",        dir:"nt", status:"a", note:"Mar 2025 — ICE" },
+    { id:"eurinr", label:"EUR / INR",             val:91.5,   unit:"₹",       chg:"ECB rate cuts",          dir:"nt", status:"a", note:"Mar 2025" },
+    { id:"gbpinr", label:"GBP / INR",             val:107.5,  unit:"₹",       chg:"UK economy stable",      dir:"nt", status:"a", note:"Mar 2025" },
   ],
 
   ratios: [
@@ -408,6 +415,10 @@ let D = {
     { name:"Unemployment (PLFS)",val:"7.6%",     bmark:"< 5%",        status:"r", note:"Urban higher; structural challenge" },
     { name:"10-yr G-Sec Yield", val:"6.65%",     bmark:"Repo +0.4%",  status:"g", note:"Spreads compressed = bond market healthy" },
     { name:"Credit Growth",     val:"16.3% YoY", bmark:"10–18%",      status:"g", note:"Strong but watch over-leverage" },
+    { name:"Gross Savings Rate",val:"~30% GDP",  bmark:"> 30%",       status:"a", note:"Investment-savings gap financed by FDI/FPI" },
+    { name:"Manufacturing Grw", val:"~5.5%",     bmark:"> 8%",        status:"a", note:"Below potential; PLI push expected to accelerate" },
+    { name:"Agriculture Growth",val:"~4.0%",     bmark:"> 3%",        status:"g", note:"Good monsoon FY25; rural demand recovering" },
+    { name:"FDI Net Inflows",   val:"$71 Bn",    bmark:"> $70 Bn",    status:"g", note:"DPIIT FY24; slight dip from $84bn peak (FY22)" },
   ],
 
   tax: [
@@ -1511,133 +1522,163 @@ function reRenderAll() {
 // NOTE: fetch() is blocked inside the Artifact sandbox — works on
 //       the GitHub Pages URL: pranavk2050.github.io/money-circle/dashboard.html
 
+// Helper: fetch one Yahoo Finance ticker, return regularMarketPrice
+async function yhFetch(ticker) {
+  const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`, { headers:{ Accept:'application/json' } });
+  const d = await r.json();
+  const price = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
+  if (!price) throw new Error('No price');
+  return price;
+}
+
+// Helper: fetch World Bank annual indicator, return latest non-null point
+async function wbFetch(indicator) {
+  const r = await fetch(`https://api.worldbank.org/v2/country/IN/indicator/${indicator}?format=json&mrv=3`);
+  const d = await r.json();
+  const pt = d[1]?.find(x => x.value != null);
+  if (!pt) throw new Error('No data');
+  return pt;
+}
+
+// Helper: fetch Frankfurter currency pair, return rate
+async function fxFetch(from, to) {
+  const r = await fetch(`https://api.frankfurter.app/latest?from=${from}&to=${to}`);
+  const d = await r.json();
+  return { rate: d.rates[to], date: d.date };
+}
+
 const LIVE_SOURCES = [
+  // ── Real-time market data (Yahoo Finance) ─────────────────────
   {
-    label: 'USD / INR exchange rate',
-    source: 'Frankfurter (ECB)',
-    freq: 'Real-time',
-    fetch: async () => {
-      const r = await fetch('https://api.frankfurter.app/latest?from=USD&to=INR');
-      const d = await r.json();
-      return { display: `₹${d.rates.INR.toFixed(2)}`, raw: d.rates.INR, date: d.date };
-    },
-    apply: ({ raw, date }) => {
-      const m = D.macro.find(m => m.id === 'inr');
-      m.val  = +raw.toFixed(2);
-      m.note = `Frankfurter/ECB · ${date}`;
-    }
+    label: 'Nifty 50', source: 'Yahoo Finance', freq: 'Real-time (delayed)',
+    fetch: async () => { const p = await yhFetch('^NSEI'); return { display: p.toLocaleString('en-IN'), raw: p }; },
+    apply: ({ raw }) => { const m = D.macro.find(m=>m.id==='nifty'); m.val=Math.round(raw); m.note='Yahoo Finance'; }
   },
   {
-    label: 'GDP Real Growth %',
-    source: 'World Bank (annual)',
-    freq: 'Annual — lags ~1 yr',
-    fetch: async () => {
-      const r = await fetch('https://api.worldbank.org/v2/country/IN/indicator/NY.GDP.MKTP.KD.ZG?format=json&mrv=2');
-      const d = await r.json();
-      const pt = d[1]?.find(x => x.value != null);
-      if (!pt) throw new Error('No data');
-      return { display: `${pt.value.toFixed(1)}% (${pt.date})`, raw: pt.value, year: pt.date };
-    },
-    apply: ({ raw, year }) => {
-      const m = D.macro.find(m => m.id === 'gdp');
-      m.chg  = `+${raw.toFixed(1)}% real growth (${year})`;
-      m.note = `World Bank · FY${year}`;
-      const r = D.ratios.find(r => r.name === 'GDP Growth');
-      if (r) { r.val = `${raw.toFixed(1)}%`; r.note = `World Bank ${year}`; r.status = raw >= 7 ? 'g' : raw >= 5.5 ? 'a' : 'r'; }
-    }
+    label: 'BSE Sensex', source: 'Yahoo Finance', freq: 'Real-time (delayed)',
+    fetch: async () => { const p = await yhFetch('^BSESN'); return { display: p.toLocaleString('en-IN'), raw: p }; },
+    apply: ({ raw }) => { const m = D.macro.find(m=>m.id==='sensex'); m.val=Math.round(raw); m.note='Yahoo Finance'; }
   },
   {
-    label: 'CPI Inflation %',
-    source: 'World Bank (annual)',
-    freq: 'Annual — lags ~1 yr',
-    fetch: async () => {
-      const r = await fetch('https://api.worldbank.org/v2/country/IN/indicator/FP.CPI.TOTL.ZG?format=json&mrv=2');
-      const d = await r.json();
-      const pt = d[1]?.find(x => x.value != null);
-      if (!pt) throw new Error('No data');
-      return { display: `${pt.value.toFixed(1)}% (${pt.date})`, raw: pt.value, year: pt.date };
-    },
-    apply: ({ raw, year }) => {
-      const m = D.macro.find(m => m.id === 'cpi');
-      m.val  = +raw.toFixed(1);
-      m.note = `World Bank · ${year}`;
-      m.status = raw > 6 ? 'r' : raw > 4 ? 'a' : 'g';
-      const r = D.ratios.find(r => r.name === 'CPI Inflation');
-      if (r) { r.val = `${raw.toFixed(1)}%`; r.note = `World Bank ${year}`; r.status = m.status; }
-    }
+    label: 'Nifty Bank', source: 'Yahoo Finance', freq: 'Real-time (delayed)',
+    fetch: async () => { const p = await yhFetch('^NSEBANK'); return { display: p.toLocaleString('en-IN'), raw: p }; },
+    apply: ({ raw }) => { const m = D.macro.find(m=>m.id==='nbank'); m.val=Math.round(raw); m.note='Yahoo Finance'; }
   },
   {
-    label: 'Current Account % GDP',
-    source: 'World Bank (annual)',
-    freq: 'Annual — lags ~1 yr',
-    fetch: async () => {
-      const r = await fetch('https://api.worldbank.org/v2/country/IN/indicator/BN.CAB.XOKA.GD.ZS?format=json&mrv=2');
-      const d = await r.json();
-      const pt = d[1]?.find(x => x.value != null);
-      if (!pt) throw new Error('No data');
-      return { display: `${pt.value.toFixed(1)}% (${pt.date})`, raw: pt.value, year: pt.date };
-    },
-    apply: ({ raw, year }) => {
-      const m = D.macro.find(m => m.id === 'ca');
-      m.val  = +raw.toFixed(1);
-      m.note = `World Bank · ${year}`;
-      m.status = raw < -3 ? 'r' : raw < -2 ? 'a' : 'g';
-      const r = D.ratios.find(r => r.name === 'Current Account');
-      if (r) { r.val = `${raw.toFixed(1)}% GDP`; r.note = `World Bank ${year}`; r.status = m.status; }
-    }
+    label: 'Nifty IT', source: 'Yahoo Finance', freq: 'Real-time (delayed)',
+    fetch: async () => { const p = await yhFetch('^CNXIT'); return { display: p.toLocaleString('en-IN'), raw: p }; },
+    apply: ({ raw }) => { const m = D.macro.find(m=>m.id==='nit'); m.val=Math.round(raw); m.note='Yahoo Finance'; }
   },
   {
-    label: 'Forex Reserves (USD Bn)',
-    source: 'World Bank (annual)',
-    freq: 'Annual — lags ~1 yr',
-    fetch: async () => {
-      const r = await fetch('https://api.worldbank.org/v2/country/IN/indicator/FI.RES.TOTL.CD?format=json&mrv=2');
-      const d = await r.json();
-      const pt = d[1]?.find(x => x.value != null);
-      if (!pt) throw new Error('No data');
-      const bn = pt.value / 1e9;
-      return { display: `$${bn.toFixed(0)} Bn (${pt.date})`, raw: bn, year: pt.date };
-    },
-    apply: ({ raw, year }) => {
-      const m = D.macro.find(m => m.id === 'forex');
-      m.val  = +raw.toFixed(0);
-      m.note = `World Bank · ${year}`;
-      const months = (raw / 75).toFixed(1); // rough import cover estimate
-      const r = D.ratios.find(r => r.name === 'Forex Cover');
-      if (r) { r.val = `${months} months`; r.note = `World Bank ${year} · $${raw.toFixed(0)}bn`; r.status = months >= 6 ? 'g' : months >= 4 ? 'a' : 'r'; }
-    }
-  },
-  {
-    label: 'Nifty 50 Index',
-    source: 'Yahoo Finance',
-    freq: 'Real-time (delayed)',
-    fetch: async () => {
-      const r = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/%5ENSEI?interval=1d&range=1d', { headers:{ 'Accept':'application/json' } });
-      const d = await r.json();
-      const price = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
-      if (!price) throw new Error('No price');
-      return { display: `${Math.round(price).toLocaleString('en-IN')}`, raw: price };
-    },
+    label: 'Brent Crude Oil ($/bbl)', source: 'Yahoo Finance', freq: 'Real-time (delayed)',
+    fetch: async () => { const p = await yhFetch('BZ=F'); return { display: `$${p.toFixed(2)}/bbl`, raw: p }; },
     apply: ({ raw }) => {
-      const m = D.macro.find(m => m.id === 'nifty');
-      m.val  = Math.round(raw);
-      m.note = 'Yahoo Finance (15-min delay)';
+      const m = D.macro.find(m=>m.id==='crude'); m.val=+raw.toFixed(1); m.note='Yahoo Finance (ICE Brent)';
+      m.status = raw > 90 ? 'r' : raw > 75 ? 'a' : 'g';
     }
   },
   {
-    label: 'Unemployment Rate %',
-    source: 'World Bank (annual)',
-    freq: 'Annual — lags ~1 yr',
+    label: 'Gold Price (10g in ₹)', source: 'Frankfurter + XAU', freq: 'Real-time',
     fetch: async () => {
-      const r = await fetch('https://api.worldbank.org/v2/country/IN/indicator/SL.UEM.TOTL.ZS?format=json&mrv=2');
-      const d = await r.json();
-      const pt = d[1]?.find(x => x.value != null);
-      if (!pt) throw new Error('No data');
-      return { display: `${pt.value.toFixed(1)}% (${pt.date})`, raw: pt.value, year: pt.date };
+      const { rate, date } = await fxFetch('XAU', 'INR'); // 1 troy oz in INR
+      const per10g = rate / 3.215;  // 1 troy oz = 31.15g
+      return { display: `₹${Math.round(per10g).toLocaleString('en-IN')}/10g`, raw: per10g, date };
     },
+    apply: ({ raw, date }) => { const m=D.macro.find(m=>m.id==='gold'); m.val=Math.round(raw); m.note=`Frankfurter/ECB · ${date}`; }
+  },
+  // ── Exchange rates (Frankfurter / ECB) ───────────────────────
+  {
+    label: 'USD / INR', source: 'Frankfurter (ECB)', freq: 'Real-time',
+    fetch: async () => { const { rate, date } = await fxFetch('USD','INR'); return { display:`₹${rate.toFixed(2)}`, raw:rate, date }; },
+    apply: ({ raw, date }) => { const m=D.macro.find(m=>m.id==='inr'); m.val=+raw.toFixed(2); m.note=`Frankfurter/ECB · ${date}`; }
+  },
+  {
+    label: 'EUR / INR', source: 'Frankfurter (ECB)', freq: 'Real-time',
+    fetch: async () => { const { rate, date } = await fxFetch('EUR','INR'); return { display:`₹${rate.toFixed(2)}`, raw:rate, date }; },
+    apply: ({ raw, date }) => { const m=D.macro.find(m=>m.id==='eurinr'); m.val=+raw.toFixed(2); m.note=`Frankfurter/ECB · ${date}`; }
+  },
+  {
+    label: 'GBP / INR', source: 'Frankfurter (ECB)', freq: 'Real-time',
+    fetch: async () => { const { rate, date } = await fxFetch('GBP','INR'); return { display:`₹${rate.toFixed(2)}`, raw:rate, date }; },
+    apply: ({ raw, date }) => { const m=D.macro.find(m=>m.id==='gbpinr'); m.val=+raw.toFixed(2); m.note=`Frankfurter/ECB · ${date}`; }
+  },
+  // ── World Bank annual indicators ─────────────────────────────
+  {
+    label: 'GDP Real Growth %', source: 'World Bank', freq: 'Annual',
+    fetch: async () => { const pt=await wbFetch('NY.GDP.MKTP.KD.ZG'); return { display:`${pt.value.toFixed(1)}% (${pt.date})`, raw:pt.value, year:pt.date }; },
     apply: ({ raw, year }) => {
-      const r = D.ratios.find(r => r.name === 'Unemployment (PLFS)');
-      if (r) { r.val = `${raw.toFixed(1)}%`; r.note = `World Bank ILO model · ${year}`; }
+      const m=D.macro.find(m=>m.id==='gdp'); m.chg=`+${raw.toFixed(1)}% real (${year})`; m.note=`World Bank ${year}`;
+      const r=D.ratios.find(r=>r.name==='GDP Growth'); if(r){r.val=`${raw.toFixed(1)}%`; r.note=`World Bank ${year}`; r.status=raw>=7?'g':raw>=5.5?'a':'r';}
+    }
+  },
+  {
+    label: 'CPI Inflation %', source: 'World Bank', freq: 'Annual',
+    fetch: async () => { const pt=await wbFetch('FP.CPI.TOTL.ZG'); return { display:`${pt.value.toFixed(1)}% (${pt.date})`, raw:pt.value, year:pt.date }; },
+    apply: ({ raw, year }) => {
+      const m=D.macro.find(m=>m.id==='cpi'); m.val=+raw.toFixed(1); m.note=`World Bank ${year}`; m.status=raw>6?'r':raw>4?'a':'g';
+      const r=D.ratios.find(r=>r.name==='CPI Inflation'); if(r){r.val=`${raw.toFixed(1)}%`; r.note=`World Bank ${year}`; r.status=m.status;}
+    }
+  },
+  {
+    label: 'Current Account % GDP', source: 'World Bank', freq: 'Annual',
+    fetch: async () => { const pt=await wbFetch('BN.CAB.XOKA.GD.ZS'); return { display:`${pt.value.toFixed(1)}% (${pt.date})`, raw:pt.value, year:pt.date }; },
+    apply: ({ raw, year }) => {
+      const m=D.macro.find(m=>m.id==='ca'); m.val=+raw.toFixed(1); m.note=`World Bank ${year}`; m.status=raw<-3?'r':raw<-2?'a':'g';
+      const r=D.ratios.find(r=>r.name==='Current Account'); if(r){r.val=`${raw.toFixed(1)}% GDP`; r.note=`World Bank ${year}`; r.status=m.status;}
+    }
+  },
+  {
+    label: 'Forex Reserves (USD Bn)', source: 'World Bank', freq: 'Annual',
+    fetch: async () => { const pt=await wbFetch('FI.RES.TOTL.CD'); const bn=pt.value/1e9; return { display:`$${bn.toFixed(0)} Bn (${pt.date})`, raw:bn, year:pt.date }; },
+    apply: ({ raw, year }) => {
+      const m=D.macro.find(m=>m.id==='forex'); m.val=+raw.toFixed(0); m.note=`World Bank ${year}`;
+      const months=(raw/75).toFixed(1);
+      const r=D.ratios.find(r=>r.name==='Forex Cover'); if(r){r.val=`${months} months`; r.note=`$${raw.toFixed(0)}bn · WB ${year}`; r.status=+months>=6?'g':+months>=4?'a':'r';}
+    }
+  },
+  {
+    label: 'Fiscal Balance % GDP', source: 'World Bank', freq: 'Annual',
+    fetch: async () => { const pt=await wbFetch('GC.BAL.CASH.GD.ZS'); return { display:`${pt.value.toFixed(1)}% (${pt.date})`, raw:pt.value, year:pt.date }; },
+    apply: ({ raw, year }) => {
+      const m=D.macro.find(m=>m.id==='fd'); const def=Math.abs(raw); m.val=+def.toFixed(1); m.note=`World Bank ${year}`;
+      m.status=def>6?'r':def>4?'a':'g';
+      const r=D.ratios.find(r=>r.name==='Fiscal Deficit'); if(r){r.val=`${def.toFixed(1)}% GDP`; r.note=`World Bank ${year}`; r.status=m.status;}
+    }
+  },
+  {
+    label: 'Unemployment Rate %', source: 'World Bank (ILO)', freq: 'Annual',
+    fetch: async () => { const pt=await wbFetch('SL.UEM.TOTL.ZS'); return { display:`${pt.value.toFixed(1)}% (${pt.date})`, raw:pt.value, year:pt.date }; },
+    apply: ({ raw, year }) => {
+      const r=D.ratios.find(r=>r.name==='Unemployment (PLFS)'); if(r){r.val=`${raw.toFixed(1)}%`; r.note=`World Bank ILO · ${year}`; r.status=raw>8?'r':raw>5?'a':'g';}
+    }
+  },
+  {
+    label: 'Gross Savings Rate % GDP', source: 'World Bank', freq: 'Annual',
+    fetch: async () => { const pt=await wbFetch('NY.GNS.ICTR.ZS'); return { display:`${pt.value.toFixed(1)}% (${pt.date})`, raw:pt.value, year:pt.date }; },
+    apply: ({ raw, year }) => {
+      const r=D.ratios.find(r=>r.name==='Gross Savings Rate'); if(r){r.val=`${raw.toFixed(1)}% GDP`; r.note=`World Bank ${year}`; r.status=raw>=30?'g':raw>=25?'a':'r';}
+    }
+  },
+  {
+    label: 'Manufacturing Growth %', source: 'World Bank', freq: 'Annual',
+    fetch: async () => { const pt=await wbFetch('NV.IND.MANF.KD.ZG'); return { display:`${pt.value.toFixed(1)}% (${pt.date})`, raw:pt.value, year:pt.date }; },
+    apply: ({ raw, year }) => {
+      const r=D.ratios.find(r=>r.name==='Manufacturing Grw'); if(r){r.val=`${raw.toFixed(1)}%`; r.note=`World Bank ${year}`; r.status=raw>=8?'g':raw>=4?'a':'r';}
+    }
+  },
+  {
+    label: 'Agriculture Growth %', source: 'World Bank', freq: 'Annual',
+    fetch: async () => { const pt=await wbFetch('NV.AGR.TOTL.KD.ZG'); return { display:`${pt.value.toFixed(1)}% (${pt.date})`, raw:pt.value, year:pt.date }; },
+    apply: ({ raw, year }) => {
+      const r=D.ratios.find(r=>r.name==='Agriculture Growth'); if(r){r.val=`${raw.toFixed(1)}%`; r.note=`World Bank ${year}`; r.status=raw>=3?'g':raw>=1.5?'a':'r';}
+    }
+  },
+  {
+    label: 'FDI Net Inflows (USD Bn)', source: 'World Bank', freq: 'Annual',
+    fetch: async () => { const pt=await wbFetch('BX.KLT.DINV.WD.CD'); const bn=pt.value/1e9; return { display:`$${bn.toFixed(1)} Bn (${pt.date})`, raw:bn, year:pt.date }; },
+    apply: ({ raw, year }) => {
+      const r=D.ratios.find(r=>r.name==='FDI Net Inflows'); if(r){r.val=`$${raw.toFixed(0)} Bn`; r.note=`World Bank ${year}`; r.status=raw>=70?'g':raw>=50?'a':'r';}
+      const c=D.cap.find(c=>c.label==='FDI Inflows'); if(c){c.val=`$${raw.toFixed(1)} Bn`; c.note=`World Bank ${year}`;}
     }
   },
 ];
